@@ -70,8 +70,8 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  var theme = localStorage.getItem('homefeast-theme') || 
-                    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                  var saved = localStorage.getItem('homefeast-theme');
+                  var theme = saved === 'dark' ? 'dark' : 'light';
                   document.documentElement.setAttribute('data-theme', theme);
                   if (localStorage.getItem('homefeast-senior-mode') === 'true') {
                     document.documentElement.classList.add('senior-mode');

@@ -240,7 +240,7 @@ function CheckoutContent() {
                   required
                   rows={2}
                   className="input"
-                  style={{ resize: "vertical" }}
+                  style={{ resize: "vertical", background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)", fontFamily: "inherit" }}
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 />
@@ -261,6 +261,7 @@ function CheckoutContent() {
                   <label className="label">City</label>
                   <select
                     className="input"
+                    style={{ background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)" }}
                     value={formData.city}
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                   >
@@ -312,6 +313,7 @@ function CheckoutContent() {
                   <label className="label">Delivery Meal Slot *</label>
                   <select
                     className="input"
+                    style={{ background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)" }}
                     value={formData.mealSlot}
                     onChange={(e) => setFormData({ ...formData, mealSlot: e.target.value })}
                   >
@@ -329,6 +331,7 @@ function CheckoutContent() {
                     type="date"
                     required
                     className="input"
+                    style={{ background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)" }}
                     value={formData.startDate}
                     min={new Date().toISOString().split("T")[0]}
                     onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
@@ -352,7 +355,7 @@ function CheckoutContent() {
                         padding: "0.75rem 1rem",
                         borderRadius: "var(--radius-sm)",
                         border: `2px solid ${formData.deliveryDays === sched.id ? "var(--primary)" : "var(--border)"}`,
-                        background: formData.deliveryDays === sched.id ? "rgba(232, 101, 10, 0.05)" : "var(--surface)",
+                        background: formData.deliveryDays === sched.id ? "var(--primary-subtle)" : "var(--surface)",
                         cursor: "pointer",
                       }}
                     >
@@ -426,7 +429,7 @@ function CheckoutContent() {
                       padding: "1rem 1.25rem",
                       borderRadius: "var(--radius-sm)",
                       border: `2px solid ${formData.paymentMethod === pm.id ? "var(--primary)" : "var(--border)"}`,
-                      background: formData.paymentMethod === pm.id ? "rgba(232, 101, 10, 0.05)" : "var(--surface)",
+                      background: formData.paymentMethod === pm.id ? "var(--primary-subtle)" : "var(--surface)",
                       cursor: "pointer",
                       transition: "all 0.2s ease",
                     }}

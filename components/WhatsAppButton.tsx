@@ -11,10 +11,12 @@ export default function WhatsAppButton() {
 
   return (
     <aside
-      className="fixed z-40"
+      id="floating-whatsapp-container"
       style={{
-        bottom: "5rem", // Above mobile bottom nav
-        right: "1.25rem",
+        position: "fixed",
+        bottom: "2rem",
+        right: "2rem",
+        zIndex: 9999,
       }}
       aria-label="Direct Support"
     >

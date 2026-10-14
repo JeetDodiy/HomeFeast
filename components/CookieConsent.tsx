@@ -34,8 +34,12 @@ export default function CookieConsent() {
     <div
       role="region"
       aria-label="Cookie Consent"
-      className="fixed bottom-16 md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:max-w-md z-50 animate-in fade-in slide-in-from-bottom duration-300"
       style={{
+        position: "fixed",
+        bottom: "1.5rem",
+        right: "1.5rem",
+        maxWidth: "420px",
+        zIndex: 9998,
         background: "var(--surface)",
         border: "1.5px solid var(--border)",
         borderRadius: "var(--radius)",

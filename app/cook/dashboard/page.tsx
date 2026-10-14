@@ -1,113 +1,582 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   LayoutDashboard, UtensilsCrossed, Calendar, DollarSign, Clock,
   Bell, Settings, LogOut, Plus, Edit2, Trash2, CheckCircle,
-  XCircle, TrendingUp, Package, Users, ToggleLeft, ToggleRight,
-  ShieldCheck, ArrowRight, Check
+  XCircle, TrendingUp, Package, Users, ShieldCheck, ArrowRight,
+  Check, Phone, MessageSquare, MapPin, Store, AlertCircle,
+  RefreshCw, ChefHat, Search, ExternalLink, Pause, Play, Sparkles
 } from "lucide-react";
 import EarningsChart from "@/components/EarningsChart";
 
+// Navigation sidebar items
 const COOK_SIDEBAR = [
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "profile", label: "Shop & Kitchen Profile", icon: Store },
   { key: "menu", label: "Menu Manager", icon: UtensilsCrossed },
+  { key: "weekly", label: "Week-Wise Meal Plan", icon: Calendar },
   { key: "plans", label: "Plans & Pricing", icon: DollarSign },
-  { key: "requests", label: "Requests Inbox", icon: Bell },
-  { key: "orders", label: "Today's Orders", icon: Package },
+  { key: "subscribers", label: "Subscribers", icon: Users },
+  { key: "orders", label: "Today's Dispatch", icon: Package },
   { key: "earnings", label: "Earnings & Payouts", icon: TrendingUp },
-  { key: "profile", label: "Kitchen Profile", icon: Settings },
 ];
 
-const INITIAL_REQUESTS = [
-  { id: "r1", customerName: "Arjun Verma", plan: "Weekly Plan", startDate: "2024-10-15", slot: "Lunch (12–1 PM)", city: "Rajkot", status: "pending", note: "Less spicy please" },
-  { id: "r2", customerName: "Kavya Reddy", plan: "Monthly Plan", startDate: "2024-10-14", slot: "Dinner (7–8 PM)", city: "Rajkot", status: "pending", note: "Extra rotis preferred" },
+// Default initial data structures
+const DEFAULT_PROFILE = {
+  shopName: "Meera's Kathiyawadi Kitchen",
+  headCook: "Meenaben Patel",
+  phone: "+91 98765 43210",
+  email: "meera@homefeast.in",
+  bio: "Authentic homemade Kathiyawadi & Gujarati thalis made with cold-pressed groundnut oil, Desi Ghee phulkas, and fresh seasonal vegetables.",
+  fssaiNumber: "10020042003854",
+  fssaiVerified: true,
+  city: "Rajkot",
+  address: "302, Silicon Hub, Race Course Road",
+  serviceAreas: ["Race Course", "Kalavad Road", "Mavdi", "150ft Ring Road", "University Road"],
+  deliveryRadiusKm: 5,
+  isOpen: true,
+  lunchSlot: "12:00 PM – 01:30 PM",
+  dinnerSlot: "07:30 PM – 09:00 PM",
+  pureVeg: true,
+  bankName: "State Bank of India",
+  bankAccount: "•••• •••• 4892",
+  bankIfsc: "SBIN0001234",
+  bankHolder: "Meenaben Patel",
+};
+
+const DEFAULT_MENU = [
+  { id: "m1", name: "Ringan No Olo (Kathiyawadi)", category: "Main Sabzi", type: "veg", price: 55, available: true, mealTime: "Dinner", desc: "Smoked roasted eggplant mashed with spring garlic, green chilies, and cold-pressed oil" },
+  { id: "m2", name: "Sev Tameta Nu Shaak", category: "Main Sabzi", type: "veg", price: 45, available: true, mealTime: "Both", desc: "Traditional sweet-tangy tomato gravy topped with crisp Ratlami sev" },
+  { id: "m3", name: "Gujarati Sweet-Sour Kadhi", category: "Dal & Kadhi", type: "veg", price: 35, available: true, mealTime: "Both", desc: "Spiced buttermilk tempered with curry leaves, mustard seeds, and jaggery" },
+  { id: "m4", name: "Dal Fry (Tadka)", category: "Dal & Kadhi", type: "veg", price: 40, available: true, mealTime: "Lunch", desc: "Slow-cooked toor dal tempered with desi cow ghee, cumin, and whole red chilies" },
+  { id: "m5", name: "Phulka Roti with Ghee (4 Pcs)", category: "Roti & Breads", type: "veg", price: 25, available: true, mealTime: "Both", desc: "Puffed whole wheat phulkas brushed with pure A2 Desi cow ghee" },
+  { id: "m6", name: "Bajra No Rotlo with Butter", category: "Roti & Breads", type: "veg", price: 30, available: true, mealTime: "Dinner", desc: "Clay tawa roasted pearl millet flatbread served with fresh white homemade makhan" },
+  { id: "m7", name: "Vaghareli Khichdi", category: "Rice & Khichdi", type: "veg", price: 50, available: true, mealTime: "Dinner", desc: "Nutritious rice and yellow moong dal tempered with garlic, peanuts, and dry spices" },
+  { id: "m8", name: "Steamed Basmati Rice", category: "Rice & Khichdi", type: "veg", price: 30, available: true, mealTime: "Lunch", desc: "Fluffy aged basmati rice cooked to perfection" },
+  { id: "m9", name: "Moong Dal Halwa", category: "Dessert / Sweet", type: "veg", price: 60, available: true, mealTime: "Lunch", desc: "Rich golden roasted yellow lentils cooked in ghee, cardamom, and almond slivers" },
 ];
 
-const INITIAL_MENU = [
-  { id: "m1", name: "Dal Fry (Tadka)", type: "veg", price: 40, available: true, mealTime: "Lunch" },
-  { id: "m2", name: "Aloo Gobi Masala", type: "veg", price: 45, available: true, mealTime: "Lunch & Dinner" },
-  { id: "m3", name: "Paneer Butter Masala", type: "veg", price: 65, available: true, mealTime: "Dinner" },
-  { id: "m4", name: "Jeera Rice", type: "veg", price: 30, available: true, mealTime: "Lunch & Dinner" },
-  { id: "m5", name: "Phulka Roti (Set of 4)", type: "veg", price: 20, available: true, mealTime: "Lunch & Dinner" },
-  { id: "m6", name: "Gujarati Kadhi", type: "veg", price: 35, available: false, mealTime: "Dinner" },
+const DEFAULT_WEEKLY_PLAN = [
+  {
+    day: "Monday",
+    lunch: { sabzi1: "Sev Tameta Nu Shaak", sabzi2: "Bhindi Masala", dalKadhi: "Gujarati Kadhi", bread: "4x Phulka Rotis", rice: "Jeera Rice", sweetOrSide: "Roasted Papad & Kachumber" },
+    dinner: { mainDish: "Kathiyawadi Ringan No Olo", bread: "2x Bajra No Rotlo with Makhan", dalKadhi: "Desi Kadhi", rice: "Vaghareli Khichdi", side: "Gud & Fresh Garlic Chutney" }
+  },
+  {
+    day: "Tuesday",
+    lunch: { sabzi1: "Paneer Butter Masala", sabzi2: "Aloo Palak", dalKadhi: "Dal Fry Tadka", bread: "4x Phulka Rotis", rice: "Steamed Rice", sweetOrSide: "Moong Dal Halwa" },
+    dinner: { mainDish: "Mix Kathol (Sprouted Beans)", bread: "4x Gujarati Bhakri", dalKadhi: "Kadhi", rice: "Plain Khichdi", side: "Onion Salad & Green Chutney" }
+  },
+  {
+    day: "Wednesday",
+    lunch: { sabzi1: "Surti Undhiyu", sabzi2: "Dudhi Chana Dal", dalKadhi: "Gujarati Sweet Kadhi", bread: "4x Methi Puri / Phulkas", rice: "Vegetable Pulao", sweetOrSide: "Jalebi (2 pcs)" },
+    dinner: { mainDish: "Lasaniya Batata (Garlic Potatoes)", bread: "2x Rotlo with White Butter", dalKadhi: "Chhach (Buttermilk)", rice: "Vaghareli Khichdi", side: "Karela Nu Sambharo" }
+  },
+  {
+    day: "Thursday",
+    lunch: { sabzi1: "Gatta Nu Shaak (Besan Dumplings)", sabzi2: "Aloo Gobi Matar", dalKadhi: "Toor Dal Fry", bread: "4x Phulka Rotis", rice: "Steamed Rice", sweetOrSide: "Buttermilk & Papad" },
+    dinner: { mainDish: "Methi Thepla (4 pcs)", bread: "Batata Nu Shaak (Sukhi Bhaji)", dalKadhi: "Sweet-Sour Kadhi", rice: "Jeera Rice", side: "Gor-Keri Achar" }
+  },
+  {
+    day: "Friday",
+    lunch: { sabzi1: "Rajma Masala", sabzi2: "Cabbage Sambharo", dalKadhi: "Kadhi", bread: "4x Phulka Rotis", rice: "Jeera Rice", sweetOrSide: "Gulab Jamun (1 pc)" },
+    dinner: { mainDish: "Dal Dhokli Kathiyawadi Style", bread: "Ghee Phulkas", dalKadhi: "Steamed Rice", rice: "Masala Khichdi", side: "Raw Mango Chutney" }
+  },
+  {
+    day: "Saturday",
+    lunch: { sabzi1: "Chole Masala", sabzi2: "Mix Veg Handvo Slice", dalKadhi: "Dal Fry", bread: "4x Bhature / Phulkas", rice: "Peas Pulao", sweetOrSide: "Sweet Lassi / Shrikhand" },
+    dinner: { mainDish: "Sev Usal / Ragda", bread: "Pav / Rotis", dalKadhi: "Kadhi", rice: "Vaghareli Khichdi", side: "Fried Green Chilies" }
+  },
+  {
+    day: "Sunday",
+    lunch: { sabzi1: "Royal Gujarati Thali (Kaju Karela + Paneer)", sabzi2: "Sukha Aloo", dalKadhi: "Special Dal", bread: "Puri & Phulkas", rice: "Kaju Pulao", sweetOrSide: "Basundi with Dry Fruits" },
+    dinner: { mainDish: "Light Evening Khichdi Kadhi Special", bread: "Phulkas", dalKadhi: "Tempered Kadhi", rice: "Khichdi", side: "Papad, Chutney & Buttermilk" }
+  }
 ];
 
-const INITIAL_ORDERS = [
-  { id: "o1", customer: "Arjun V.", plan: "Weekly", slot: "Lunch 12–1 PM", items: ["Dal Fry", "Aloo Gobi", "Rice", "Phulka"], status: "CONFIRMED" },
-  { id: "o2", customer: "Rahul M.", plan: "Monthly", slot: "Lunch 12–1 PM", items: ["Chana Dal", "Mix Veg", "Rice", "Phulka"], status: "IN_PREPARATION" },
-  { id: "o3", customer: "Anita S.", plan: "Daily", slot: "Lunch 12–1 PM", items: ["Dal Fry", "Bhindi", "Rice", "Phulka"], status: "OUT_FOR_DELIVERY" },
+const DEFAULT_PLANS = [
+  {
+    id: "p1",
+    name: "Daily Trial Plan",
+    badge: "Trial",
+    price: 120,
+    billingCycle: "per meal",
+    mealsIncluded: 1,
+    description: "1 Dal, 2 Veg Sabzi, 4 Phulka Rotis with Ghee, Rice, Salad & Roasted Papad.",
+    pauseAllowedDays: 0,
+    deliverySlots: ["Lunch (12–1:30 PM)", "Dinner (7:30–9 PM)"],
+    active: true,
+  },
+  {
+    id: "p2",
+    name: "Weekly Saver Plan (7 Days)",
+    badge: "Popular",
+    price: 749,
+    billingCycle: "7 days",
+    mealsIncluded: 7,
+    description: "Billed weekly. Save 11%. Includes rotating weekday specials + Sunday sweet & Kathiyawadi dinner.",
+    pauseAllowedDays: 1,
+    deliverySlots: ["Lunch (12–1:30 PM)", "Dinner (7:30–9 PM)"],
+    active: true,
+  },
+  {
+    id: "p3",
+    name: "Monthly Home Plan (30 Days)",
+    badge: "Best Value",
+    price: 2799,
+    billingCycle: "30 days",
+    mealsIncluded: 30,
+    description: "Best rate (₹93/meal). Includes up to 5 paused delivery days rollover + free weekend desserts.",
+    pauseAllowedDays: 5,
+    deliverySlots: ["Lunch (12–1:30 PM)", "Dinner (7:30–9 PM)", "Both Lunch & Dinner"],
+    active: true,
+  },
 ];
 
 export default function CookDashboardPage() {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [menuItems, setMenuItems] = useState(INITIAL_MENU);
-  const [requests, setRequests] = useState(INITIAL_REQUESTS);
-  const [orders, setOrders] = useState(INITIAL_ORDERS);
-  const [rejectionReason, setRejectionReason] = useState<Record<string, string>>({});
 
-  // New Dish Modal Form State
-  const [showAddDish, setShowAddDish] = useState(false);
-  const [newDish, setNewDish] = useState({ name: "", type: "veg", price: 50, mealTime: "Lunch & Dinner" });
+  // State initialized with localStorage or defaults
+  const [profile, setProfile] = useState(DEFAULT_PROFILE);
+  const [menuItems, setMenuItems] = useState(DEFAULT_MENU);
+  const [weeklyPlan, setWeeklyPlan] = useState(DEFAULT_WEEKLY_PLAN);
+  const [plans, setPlans] = useState(DEFAULT_PLANS);
+  const [subscribers, setSubscribers] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [mounted, setMounted] = useState(false);
 
-  const handleAcceptRequest = (id: string) => {
-    setRequests((prev) => prev.filter((r) => r.id !== id));
-    alert(`Request ${id} accepted! Customer received WhatsApp notification.`);
+  // UI state
+  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+  const [menuFilterCategory, setMenuFilterCategory] = useState("All");
+  const [menuSearchQuery, setMenuSearchQuery] = useState("");
+  const [showAddDishModal, setShowAddDishModal] = useState(false);
+  const [editingDish, setEditingDish] = useState<any | null>(null);
+  const [newDish, setNewDish] = useState({
+    name: "", category: "Main Sabzi", type: "veg", price: 50, mealTime: "Both", desc: ""
+  });
+
+  // Edit Day Plan Modal
+  const [showEditDayModal, setShowEditDayModal] = useState(false);
+  const [dayToEdit, setDayToEdit] = useState<any | null>(null);
+
+  // Edit Plan Modal
+  const [showEditPlanModal, setShowEditPlanModal] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<any | null>(null);
+
+  // Add Subscriber Modal
+  const [showAddSubscriberModal, setShowAddSubscriberModal] = useState(false);
+  const [newSubscriber, setNewSubscriber] = useState({
+    name: "", phone: "", plan: "Weekly Saver Plan (7 Days)", slot: "Lunch (12–1:30 PM)", address: "", dietPreference: "Pure Veg, less spicy"
+  });
+
+  // Toast notification state
+  const [toastMessage, setToastMessage] = useState("");
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(""), 3500);
   };
 
-  const handleRejectRequest = (id: string) => {
-    setRequests((prev) => prev.filter((r) => r.id !== id));
-    alert(`Request ${id} declined.`);
+  // Load state from localStorage on client mount
+  useEffect(() => {
+    setMounted(true);
+
+    // Read ?tab= from URL query if present
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam && COOK_SIDEBAR.some(s => s.key === tabParam)) {
+        setActiveTab(tabParam);
+      }
+
+      // Check current user from login
+      try {
+        const storedUser = localStorage.getItem("hf_user");
+        if (storedUser) {
+          const u = JSON.parse(storedUser);
+          if (u.name) {
+            setProfile(prev => ({
+              ...prev,
+              headCook: u.name,
+              shopName: prev.shopName.includes("Meera") ? `${u.name.split(" ")[0]}'s Kitchen` : prev.shopName
+            }));
+          }
+        }
+      } catch {}
+
+      // Load Profile
+      try {
+        const storedProfile = localStorage.getItem("hf_cook_profile");
+        if (storedProfile) setProfile(JSON.parse(storedProfile));
+      } catch {}
+
+      // Load Menu
+      try {
+        const storedMenu = localStorage.getItem("hf_cook_menu");
+        if (storedMenu) setMenuItems(JSON.parse(storedMenu));
+      } catch {}
+
+      // Load Weekly Plan
+      try {
+        const storedWeekly = localStorage.getItem("hf_cook_weekly_menu");
+        if (storedWeekly) setWeeklyPlan(JSON.parse(storedWeekly));
+      } catch {}
+
+      // Load Plans
+      try {
+        const storedPlans = localStorage.getItem("hf_cook_plans");
+        if (storedPlans) setPlans(JSON.parse(storedPlans));
+      } catch {}
+
+      // Load Subscribers
+      try {
+        const storedSubscribers = localStorage.getItem("hf_cook_subscribers");
+        if (storedSubscribers) {
+          setSubscribers(JSON.parse(storedSubscribers));
+        }
+      } catch {}
+
+      // Load Orders
+      try {
+        const storedOrders = localStorage.getItem("hf_cook_orders");
+        if (storedOrders) {
+          setOrders(JSON.parse(storedOrders));
+        }
+      } catch {}
+    }
+  }, []);
+
+  // Save Handlers to persist state
+  const saveProfile = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (typeof window !== "undefined") {
+      localStorage.setItem("hf_cook_profile", JSON.stringify(profile));
+      // Also update hf_user kitchen name if appropriate
+      try {
+        const u = localStorage.getItem("hf_user");
+        if (u) {
+          const userObj = JSON.parse(u);
+          userObj.kitchenName = profile.shopName;
+          userObj.name = profile.headCook;
+          localStorage.setItem("hf_user", JSON.stringify(userObj));
+        }
+      } catch {}
+    }
+    showToast("Shop profile & kitchen settings saved successfully!");
   };
 
-  const toggleAvailability = (id: string) => {
-    setMenuItems((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, available: !m.available } : m))
-    );
+  const toggleKitchenStatus = () => {
+    const updated = { ...profile, isOpen: !profile.isOpen };
+    setProfile(updated);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("hf_cook_profile", JSON.stringify(updated));
+    }
+    showToast(updated.isOpen ? "Kitchen is now LIVE & accepting orders!" : "Kitchen paused. Not taking new orders.");
   };
 
+  // Menu Handlers
   const handleAddDish = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newDish.name.trim()) return;
     const dish = {
-      id: `m${Date.now()}`,
-      name: newDish.name,
+      id: `dish_${Date.now()}`,
+      name: newDish.name.trim(),
+      category: newDish.category,
       type: newDish.type,
-      price: Number(newDish.price),
+      price: Number(newDish.price) || 40,
       available: true,
       mealTime: newDish.mealTime,
+      desc: newDish.desc.trim() || `${newDish.name} made fresh daily.`,
     };
-    setMenuItems([...menuItems, dish]);
-    setNewDish({ name: "", type: "veg", price: 50, mealTime: "Lunch & Dinner" });
-    setShowAddDish(false);
+    const updated = [dish, ...menuItems];
+    setMenuItems(updated);
+    if (typeof window !== "undefined") localStorage.setItem("hf_cook_menu", JSON.stringify(updated));
+    setNewDish({ name: "", category: "Main Sabzi", type: "veg", price: 50, mealTime: "Both", desc: "" });
+    setShowAddDishModal(false);
+    showToast(`Added "${dish.name}" to menu catalog!`);
   };
 
-  const updateOrderStatus = (id: string, newStatus: string) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o))
-    );
+  const handleUpdateDish = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDish) return;
+    const updated = menuItems.map(d => d.id === editingDish.id ? editingDish : d);
+    setMenuItems(updated);
+    if (typeof window !== "undefined") localStorage.setItem("hf_cook_menu", JSON.stringify(updated));
+    setEditingDish(null);
+    showToast(`Updated "${editingDish.name}" successfully!`);
   };
+
+  const toggleDishStock = (id: string) => {
+    const updated = menuItems.map(d => d.id === id ? { ...d, available: !d.available } : d);
+    setMenuItems(updated);
+    if (typeof window !== "undefined") localStorage.setItem("hf_cook_menu", JSON.stringify(updated));
+  };
+
+  const handleDeleteDish = (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to remove "${name}" from your menu?`)) return;
+    const updated = menuItems.filter(d => d.id !== id);
+    setMenuItems(updated);
+    if (typeof window !== "undefined") localStorage.setItem("hf_cook_menu", JSON.stringify(updated));
+    showToast(`Removed "${name}" from menu.`);
+  };
+
+  // Weekly Plan Handlers
+  const handleSaveDayPlan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dayToEdit) return;
+    const updated = weeklyPlan.map((d, idx) => idx === selectedDayIndex ? dayToEdit : d);
+    setWeeklyPlan(updated);
+    if (typeof window !== "undefined") localStorage.setItem("hf_cook_weekly_menu", JSON.stringify(updated));
+    setShowEditDayModal(false);
+    showToast(`Updated menu for ${dayToEdit.day}!`);
+  };
+
+  const handlePublishWeeklyPlan = () => {
+    if (typeof window !== "undefined") localStorage.setItem("hf_cook_weekly_menu", JSON.stringify(weeklyPlan));
+    showToast("7-Day Rotating Weekly Menu published to all subscribers!");
+  };
+
+  // Plans Handlers
+  const handleSavePlan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPlan) return;
+    const updated = plans.map(p => p.id === editingPlan.id ? editingPlan : p);
+    setPlans(updated);
+    if (typeof window !== "undefined") localStorage.setItem("hf_cook_plans", JSON.stringify(updated));
+    setShowEditPlanModal(false);
+    showToast(`Saved settings for ${editingPlan.name}!`);
+  };
+
+  // Subscriber Handlers
+  const handleAddSubscriber = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSubscriber.name || !newSubscriber.phone) return;
+    const totalDays = newSubscriber.plan.includes("30") ? 30 : newSubscriber.plan.includes("7") ? 7 : 1;
+    const sub = {
+      id: `sub_${Date.now()}`,
+      name: newSubscriber.name,
+      phone: newSubscriber.phone,
+      plan: newSubscriber.plan,
+      slot: newSubscriber.slot,
+      address: newSubscriber.address || "Rajkot City",
+      startDate: new Date().toISOString().split("T")[0],
+      remainingMeals: totalDays,
+      totalMeals: totalDays,
+      dietPreference: newSubscriber.dietPreference,
+      status: "ACTIVE",
+    };
+    const updated = [sub, ...subscribers];
+    setSubscribers(updated);
+    if (typeof window !== "undefined") localStorage.setItem("hf_cook_subscribers", JSON.stringify(updated));
+
+    // Also generate a dispatch order for today
+    const orderTicket = {
+      id: `ord_${Date.now()}`,
+      customer: sub.name,
+      phone: sub.phone,
+      plan: sub.plan,
+      slot: sub.slot,
+      address: sub.address,
+      items: ["Daily Gujarati Thali", "Phulka Roti", "Dal/Kadhi", "Sabzi", "Rice"],
+      status: "CONFIRMED",
+      packedItems: { sabzi: false, rotis: false, dal: false, rice: false },
+    };
+    const updatedOrders = [orderTicket, ...orders];
+    setOrders(updatedOrders);
+    if (typeof window !== "undefined") localStorage.setItem("hf_cook_orders", JSON.stringify(updatedOrders));
+
+    setShowAddSubscriberModal(false);
+    setNewSubscriber({ name: "", phone: "", plan: "Weekly Saver Plan (7 Days)", slot: "Lunch (12–1:30 PM)", address: "", dietPreference: "Pure Veg, less spicy" });
+    showToast(`Added subscriber ${sub.name} & created today's tiffin packing ticket!`);
+  };
+
+  const handleTogglePauseSubscriber = (id: string) => {
+    const updated = subscribers.map(s => {
+      if (s.id === id) {
+        const nextStatus = s.status === "ACTIVE" ? "PAUSED" : "ACTIVE";
+        return { ...s, status: nextStatus };
+      }
+      return s;
+    });
+    setSubscribers(updated);
+    if (typeof window !== "undefined") localStorage.setItem("hf_cook_subscribers", JSON.stringify(updated));
+    showToast("Subscriber status updated.");
+  };
+
+  const handleDeleteSubscriber = (id: string, name: string) => {
+    if (!confirm(`Cancel subscription for ${name}?`)) return;
+    const updated = subscribers.filter(s => s.id !== id);
+    setSubscribers(updated);
+    if (typeof window !== "undefined") localStorage.setItem("hf_cook_subscribers", JSON.stringify(updated));
+    showToast(`Removed subscription for ${name}.`);
+  };
+
+  const handleSimulateTestSubscriber = () => {
+    const demoSub = {
+      id: `sub_${Date.now()}`,
+      name: "Arjun Verma",
+      phone: "+91 98251 23456",
+      plan: "Weekly Saver Plan (7 Days)",
+      slot: "Lunch (12:00 PM – 01:30 PM)",
+      address: "Flat 402, Shivalik Heights, Kalavad Road, Rajkot",
+      startDate: new Date().toISOString().split("T")[0],
+      remainingMeals: 6,
+      totalMeals: 7,
+      dietPreference: "Kathiyawadi style, extra garlic chutney, less chili",
+      status: "ACTIVE",
+    };
+    const updatedSubs = [demoSub, ...subscribers];
+    setSubscribers(updatedSubs);
+    if (typeof window !== "undefined") localStorage.setItem("hf_cook_subscribers", JSON.stringify(updatedSubs));
+
+    const testOrder = {
+      id: `ord_${Date.now()}`,
+      customer: demoSub.name,
+      phone: demoSub.phone,
+      plan: demoSub.plan,
+      slot: demoSub.slot,
+      address: demoSub.address,
+      items: ["Ringan No Olo", "Bajra No Rotlo (2 pcs)", "Gujarati Kadhi", "Vaghareli Khichdi", "Garlic Chutney"],
+      status: "CONFIRMED",
+      packedItems: { sabzi: true, rotis: false, dal: false, rice: false },
+    };
+    const updatedOrders = [testOrder, ...orders];
+    setOrders(updatedOrders);
+    if (typeof window !== "undefined") localStorage.setItem("hf_cook_orders", JSON.stringify(updatedOrders));
+
+    showToast("Simulated test subscriber & generated today's live packing ticket!");
+  };
+
+  // Orders Dispatch State Machine
+  const updateOrderStatus = (id: string, newStatus: string) => {
+    const updated = orders.map(o => o.id === id ? { ...o, status: newStatus } : o);
+    setOrders(updated);
+    if (typeof window !== "undefined") localStorage.setItem("hf_cook_orders", JSON.stringify(updated));
+    showToast(`Order status updated to: ${newStatus.replace(/_/g, " ")}`);
+  };
+
+  const togglePackItem = (orderId: string, itemKey: string) => {
+    const updated = orders.map(o => {
+      if (o.id === orderId) {
+        const currentPacked = o.packedItems || {};
+        return {
+          ...o,
+          packedItems: { ...currentPacked, [itemKey]: !currentPacked[itemKey] }
+        };
+      }
+      return o;
+    });
+    setOrders(updated);
+    if (typeof window !== "undefined") localStorage.setItem("hf_cook_orders", JSON.stringify(updated));
+  };
+
+  const clearDeliveredOrders = () => {
+    const remaining = orders.filter(o => o.status !== "DELIVERED");
+    setOrders(remaining);
+    if (typeof window !== "undefined") localStorage.setItem("hf_cook_orders", JSON.stringify(remaining));
+    showToast("Delivered orders cleared from dispatch queue.");
+  };
+
+  // Earnings calculations
+  const totalSubscribersCount = subscribers.filter(s => s.status === "ACTIVE").length;
+  const calculatedGrossRevenue = (totalSubscribersCount * 2200) + (orders.length * 120) || 23800;
+  const commission = Math.round(calculatedGrossRevenue * 0.10);
+  const netEarnings = calculatedGrossRevenue - commission;
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg)" }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
+      {/* Toast Alert */}
+      {toastMessage && (
+        <div
+          style={{
+            position: "fixed",
+            top: "1.5rem",
+            right: "1.5rem",
+            zIndex: 10000,
+            background: "var(--surface)",
+            color: "var(--text)",
+            border: "1.5px solid var(--primary)",
+            padding: "0.875rem 1.25rem",
+            borderRadius: "12px",
+            boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.75rem",
+            fontSize: "0.9375rem",
+            fontWeight: 600,
+            animation: "fadeInUp 0.3s ease",
+          }}
+        >
+          <Sparkles size={18} style={{ color: "var(--primary)" }} />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       {/* Cook Sidebar */}
-      <aside className="sidebar" aria-label="Cook navigation">
-        <div style={{ marginBottom: "2rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.5rem" }}>
-            <img
-              src="https://randomuser.me/api/portraits/women/44.jpg"
-              alt="Cook"
-              style={{ width: 48, height: 48, borderRadius: "50%", border: "2px solid var(--primary)", objectFit: "cover" }}
-            />
-            <div>
-              <p style={{ fontFamily: "Poppins", fontWeight: 700, color: "var(--text)", margin: 0 }}>Meera Patel</p>
-              <span className="badge badge-active" style={{ fontSize: "0.7rem", marginTop: "0.25rem" }}>
-                ✓ Verified Cook (Rajkot)
+      <aside className="sidebar" aria-label="Cook navigation" style={{ width: "270px", flexShrink: 0 }}>
+        {/* Kitchen Header in Sidebar */}
+        <div style={{ marginBottom: "1.5rem", padding: "0.5rem 0.25rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: "50%",
+                background: "var(--primary)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "white",
+                fontSize: "1.25rem",
+                fontWeight: 800,
+                flexShrink: 0,
+              }}
+            >
+              {profile.headCook.charAt(0) || "M"}
+            </div>
+            <div style={{ overflow: "hidden" }}>
+              <p style={{ fontFamily: "Poppins", fontWeight: 700, color: "var(--text)", margin: 0, fontSize: "0.95rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {profile.shopName}
+              </p>
+              <span className="badge badge-active" style={{ fontSize: "0.68rem", marginTop: "0.25rem" }}>
+                ✓ {profile.fssaiVerified ? "FSSAI Verified" : "Home Cook"} ({profile.city})
               </span>
             </div>
           </div>
+
+          {/* Quick Kitchen Open/Closed Toggle */}
+          <button
+            onClick={toggleKitchenStatus}
+            style={{
+              marginTop: "1rem",
+              width: "100%",
+              padding: "0.5rem 0.75rem",
+              borderRadius: "8px",
+              border: profile.isOpen ? "1px solid var(--secondary)" : "1px solid var(--danger)",
+              background: profile.isOpen ? "rgba(16, 185, 129, 0.1)" : "rgba(239, 68, 68, 0.1)",
+              color: profile.isOpen ? "var(--secondary)" : "var(--danger)",
+              fontSize: "0.78rem",
+              fontWeight: 700,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.5rem",
+              cursor: "pointer",
+            }}
+          >
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: profile.isOpen ? "var(--secondary)" : "var(--danger)",
+              }}
+            />
+            {profile.isOpen ? "Kitchen OPEN (Accepting)" : "Kitchen CLOSED (Paused)"}
+          </button>
         </div>
 
+        {/* Sidebar Nav Items */}
         <nav style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
           {COOK_SIDEBAR.map(({ key, label, icon: Icon }) => (
             <button
@@ -115,51 +584,157 @@ export default function CookDashboardPage() {
               type="button"
               className={`sidebar-link${activeTab === key ? " active" : ""}`}
               onClick={() => setActiveTab(key)}
-              style={{ width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.75rem 1rem", borderRadius: "8px", fontWeight: 600 }}
+              style={{
+                width: "100%",
+                textAlign: "left",
+                background: activeTab === key ? "var(--surface-alt)" : "none",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.75rem",
+                padding: "0.75rem 1rem",
+                borderRadius: "8px",
+                fontWeight: activeTab === key ? 700 : 500,
+                color: activeTab === key ? "var(--primary)" : "var(--text)",
+                transition: "all 0.15s ease",
+              }}
             >
-              <Icon size={18} />
-              <span style={{ flex: 1 }}>{label}</span>
-              {key === "requests" && requests.length > 0 && (
-                <span style={{ background: "var(--primary)", color: "white", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: 700 }}>
-                  {requests.length}
+              <Icon size={18} style={{ color: activeTab === key ? "var(--primary)" : "var(--text-muted)" }} />
+              <span style={{ flex: 1, fontSize: "0.875rem" }}>{label}</span>
+              {key === "orders" && orders.filter(o => o.status !== "DELIVERED").length > 0 && (
+                <span
+                  style={{
+                    background: "var(--primary)",
+                    color: "white",
+                    borderRadius: "50%",
+                    width: 20,
+                    height: 20,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "0.7rem",
+                    fontWeight: 700,
+                  }}
+                >
+                  {orders.filter(o => o.status !== "DELIVERED").length}
                 </span>
               )}
             </button>
           ))}
         </nav>
 
-        <div style={{ marginTop: "auto", paddingTop: "2rem", borderTop: "1px solid var(--border)" }}>
-          <Link href="/auth/login" className="sidebar-link" style={{ width: "100%", textDecoration: "none", color: "var(--danger)" }}>
+        {/* Sign Out */}
+        <div style={{ marginTop: "auto", paddingTop: "1.5rem", borderTop: "1px solid var(--border)" }}>
+          <button
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                localStorage.removeItem("hf_token");
+                localStorage.removeItem("hf_user");
+                window.location.href = "/";
+              }
+            }}
+            className="sidebar-link"
+            style={{
+              width: "100%",
+              textDecoration: "none",
+              color: "var(--danger)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.75rem",
+              padding: "0.75rem 1rem",
+              fontSize: "0.875rem",
+              fontWeight: 600,
+            }}
+          >
             <LogOut size={18} /> Sign Out
-          </Link>
+          </button>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main style={{ flex: 1, padding: "2rem", overflow: "auto" }}>
+      {/* Main Content Area */}
+      <main style={{ flex: 1, padding: "2rem", overflowY: "auto", minWidth: 0 }}>
+
+        {/* Top Operational Banner */}
+        <header
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "1rem",
+            marginBottom: "2rem",
+            paddingBottom: "1.25rem",
+            borderBottom: "1px solid var(--border)",
+          }}
+        >
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+              <h1 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.75rem", color: "var(--text)", margin: 0 }}>
+                {profile.shopName}
+              </h1>
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  padding: "0.25rem 0.65rem",
+                  borderRadius: "20px",
+                  background: profile.isOpen ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
+                  color: profile.isOpen ? "var(--secondary)" : "var(--danger)",
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: profile.isOpen ? "var(--secondary)" : "var(--danger)" }} />
+                {profile.isOpen ? "Accepting Orders" : "Closed / Off Duty"}
+              </span>
+            </div>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", margin: "0.35rem 0 0" }}>
+              Head Chef: <strong>{profile.headCook}</strong> • FSSAI: {profile.fssaiNumber} • {profile.city} ({profile.serviceAreas.length} Service Hubs)
+            </p>
+          </div>
+
+          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+            <button
+              onClick={() => setActiveTab("profile")}
+              className="btn btn-outline"
+              style={{ fontSize: "0.8125rem", padding: "0.5rem 0.875rem" }}
+            >
+              <Settings size={15} /> Edit Shop Settings
+            </button>
+            <button
+              onClick={() => setActiveTab("orders")}
+              className="btn btn-primary"
+              style={{ fontSize: "0.8125rem", padding: "0.5rem 1rem" }}
+            >
+              <Package size={15} /> Today&apos;s Dispatch Station
+            </button>
+          </div>
+        </header>
+
+        {/* ------------------------------------------------------------- */}
         {/* TAB 1: OVERVIEW DASHBOARD */}
+        {/* ------------------------------------------------------------- */}
         {activeTab === "dashboard" && (
           <div>
-            <div style={{ marginBottom: "2rem" }}>
-              <h1 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.75rem", color: "var(--text)", marginBottom: "0.25rem" }}>
-                Meera's Kitchen Dashboard 👩‍🍳
-              </h1>
-              <p style={{ color: "var(--text-muted)" }}>FSSAI Lic: 10020042003854 • Race Course, Rajkot • {orders.length} tiffins scheduled today</p>
-            </div>
-
             {/* KPI Cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "1.25rem", marginBottom: "2.5rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem", marginBottom: "2rem" }}>
               {[
-                { label: "Today's Deliveries", value: orders.length.toString(), icon: Package, color: "var(--primary)" },
-                { label: "Active Subscribers", value: "23", icon: Users, color: "var(--secondary)" },
-                { label: "This Month Payout", value: "₹21,450", icon: TrendingUp, color: "var(--info)" },
-                { label: "Active Menu Dishes", value: menuItems.filter((m) => m.available).length.toString(), icon: UtensilsCrossed, color: "var(--accent)" },
-              ].map(({ label, value, icon: Icon, color }) => (
-                <div key={label} className="kpi-card">
+                { label: "Today's Tiffins to Dispatch", value: orders.filter(o => o.status !== "DELIVERED").length.toString(), sub: `${orders.filter(o => o.status === "DELIVERED").length} completed`, icon: Package, color: "var(--primary)" },
+                { label: "Active Subscribers", value: totalSubscribersCount.toString(), sub: `${subscribers.length} total registered`, icon: Users, color: "var(--secondary)" },
+                { label: "Est. Month Payout", value: `₹${netEarnings.toLocaleString("en-IN")}`, sub: "Weekly bank settlement", icon: TrendingUp, color: "var(--info)" },
+                { label: "Active Menu Dishes", value: menuItems.filter(m => m.available).length.toString(), sub: `${menuItems.length} catalog items`, icon: UtensilsCrossed, color: "var(--accent)" },
+              ].map(({ label, value, sub, icon: Icon, color }) => (
+                <div key={label} className="kpi-card" style={{ padding: "1.25rem", borderRadius: "12px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div>
                       <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>{label}</p>
-                      <p style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.875rem", color: "var(--text)", margin: 0 }}>{value}</p>
+                      <p style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.75rem", color: "var(--text)", margin: 0 }}>{value}</p>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.35rem", margin: 0 }}>{sub}</p>
                     </div>
                     <div style={{ width: 44, height: 44, borderRadius: "10px", background: `${color}18`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <Icon size={22} style={{ color }} />
@@ -169,413 +744,1618 @@ export default function CookDashboardPage() {
               ))}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
-              {/* Requests Widget */}
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-                  <h2 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.125rem", color: "var(--text)" }}>
-                    Incoming Requests ({requests.length})
-                  </h2>
-                  <button onClick={() => setActiveTab("requests")} className="btn btn-ghost" style={{ fontSize: "0.875rem", color: "var(--primary)" }}>
-                    View all
+            {/* Quick Actions & Live Operations Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: "1.5rem", marginBottom: "2rem" }}>
+              {/* Dispatch Queue Widget */}
+              <div className="card" style={{ padding: "1.5rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                  <div>
+                    <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.125rem", color: "var(--text)", margin: 0 }}>
+                      Today&apos;s Live Packing Station
+                    </h3>
+                    <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", margin: "0.25rem 0 0" }}>
+                      {orders.filter(o => o.status !== "DELIVERED").length} tiffins needing packing and handover
+                    </p>
+                  </div>
+                  <button onClick={() => setActiveTab("orders")} className="btn btn-ghost" style={{ fontSize: "0.8125rem", color: "var(--primary)" }}>
+                    Full Dispatch View →
                   </button>
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
-                  {requests.length === 0 ? (
-                    <div className="card" style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)" }}>
-                      <CheckCircle size={32} style={{ color: "var(--secondary)", margin: "0 auto 0.5rem" }} />
-                      <p>All subscription requests processed!</p>
-                    </div>
-                  ) : (
-                    requests.map((req) => (
-                      <div key={req.id} className="card" style={{ padding: "1.25rem" }}>
-                        <div style={{ marginBottom: "0.75rem" }}>
-                          <p style={{ fontFamily: "Poppins", fontWeight: 700, color: "var(--text)", margin: 0 }}>{req.customerName}</p>
-                          <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", margin: "0.25rem 0" }}>
-                            {req.plan} · {req.slot} · Start: {req.startDate}
-                          </p>
-                          {req.note && <p style={{ fontSize: "0.75rem", color: "var(--primary)" }}>Note: {req.note}</p>}
+                {orders.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "2.5rem 1rem", border: "1.5px dashed var(--border)", borderRadius: "10px" }}>
+                    <Package size={36} style={{ color: "var(--text-muted)", margin: "0 auto 0.75rem" }} />
+                    <p style={{ fontWeight: 600, color: "var(--text)", marginBottom: "0.25rem" }}>No orders in queue for right now</p>
+                    <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", maxWidth: 380, margin: "0 auto 1rem" }}>
+                      When subscribers renew or new customers subscribe to your shop, their meal tickets appear here automatically.
+                    </p>
+                    <button onClick={handleSimulateTestSubscriber} className="btn btn-outline" style={{ fontSize: "0.8125rem" }}>
+                      <Sparkles size={14} /> Simulate a Customer Order
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                    {orders.slice(0, 3).map((o) => (
+                      <div
+                        key={o.id}
+                        style={{
+                          padding: "1rem",
+                          borderRadius: "8px",
+                          border: "1px solid var(--border)",
+                          background: "var(--surface-alt)",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: "1rem",
+                        }}
+                      >
+                        <div>
+                          <strong style={{ color: "var(--text)", fontSize: "0.9375rem" }}>{o.customer}</strong>
+                          <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "0.5rem" }}>• {o.slot}</span>
+                          <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: "0.25rem 0 0" }}>{o.items.slice(0, 3).join(" • ")}</p>
                         </div>
-                        <div style={{ display: "flex", gap: "0.5rem" }}>
-                          <button
-                            onClick={() => handleAcceptRequest(req.id)}
-                            className="btn btn-secondary"
-                            style={{ flex: 1, justifyContent: "center", fontSize: "0.8125rem", padding: "0.4rem" }}
-                          >
-                            <CheckCircle size={14} /> Accept
-                          </button>
-                          <button
-                            onClick={() => handleRejectRequest(req.id)}
-                            className="btn btn-ghost"
-                            style={{ flex: 1, justifyContent: "center", fontSize: "0.8125rem", padding: "0.4rem", color: "var(--danger)" }}
-                          >
-                            <XCircle size={14} /> Decline
-                          </button>
-                        </div>
+                        <span
+                          className={`badge ${
+                            o.status === "DELIVERED"
+                              ? "badge-success"
+                              : o.status === "OUT_FOR_DELIVERY"
+                              ? "badge-warning"
+                              : "badge-active"
+                          }`}
+                        >
+                          {o.status.replace(/_/g, " ")}
+                        </span>
                       </div>
-                    ))
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Today's Orders Quick View */}
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-                  <h2 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.125rem", color: "var(--text)" }}>Today's Live Dispatch</h2>
-                  <button onClick={() => setActiveTab("orders")} className="btn btn-ghost" style={{ fontSize: "0.875rem", color: "var(--primary)" }}>
-                    Manage
+              {/* Today's Scheduled Rotating Meal */}
+              <div className="card" style={{ padding: "1.5rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                  <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.125rem", color: "var(--text)", margin: 0 }}>
+                    Today&apos;s Rotating Menu
+                  </h3>
+                  <button onClick={() => setActiveTab("weekly")} className="btn btn-ghost" style={{ fontSize: "0.8125rem", color: "var(--primary)" }}>
+                    7-Day Calendar →
                   </button>
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
-                  {orders.map((o) => (
-                    <div key={o.id} className="card" style={{ padding: "1.25rem" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-                        <strong>{o.customer} ({o.plan})</strong>
-                        <span className="badge badge-active">{o.status}</span>
-                      </div>
-                      <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", margin: "0.25rem 0" }}>Slot: {o.slot}</p>
-                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{o.items.join(" • ")}</p>
-                    </div>
-                  ))}
+                <div style={{ padding: "1rem", borderRadius: "10px", background: "var(--surface-alt)", marginBottom: "1rem" }}>
+                  <p style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", color: "var(--primary)", margin: 0 }}>
+                    🍱 Lunch Menu ({weeklyPlan[0]?.day})
+                  </p>
+                  <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text)", margin: "0.5rem 0 0.25rem" }}>
+                    {weeklyPlan[0]?.lunch.sabzi1} & {weeklyPlan[0]?.lunch.sabzi2}
+                  </p>
+                  <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: 0 }}>
+                    {weeklyPlan[0]?.lunch.dalKadhi} • {weeklyPlan[0]?.lunch.bread} • {weeklyPlan[0]?.lunch.rice}
+                  </p>
+                </div>
+
+                <div style={{ padding: "1rem", borderRadius: "10px", background: "var(--surface-alt)" }}>
+                  <p style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", color: "var(--secondary)", margin: 0 }}>
+                    🌙 Dinner Menu ({weeklyPlan[0]?.day})
+                  </p>
+                  <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text)", margin: "0.5rem 0 0.25rem" }}>
+                    {weeklyPlan[0]?.dinner.mainDish}
+                  </p>
+                  <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", margin: 0 }}>
+                    {weeklyPlan[0]?.dinner.bread} • {weeklyPlan[0]?.dinner.dalKadhi} • {weeklyPlan[0]?.dinner.rice}
+                  </p>
                 </div>
               </div>
+            </div>
+
+            {/* Revenue Velocity Chart */}
+            <div className="card" style={{ padding: "1.75rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+                <div>
+                  <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.125rem", color: "var(--text)", margin: 0 }}>
+                    Weekly Revenue & Delivery Velocity
+                  </h3>
+                  <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", margin: "0.25rem 0 0" }}>
+                    Daily fulfilled meal subscriptions (Last 7 Days)
+                  </p>
+                </div>
+                <span className="badge badge-success" style={{ fontSize: "0.75rem" }}>+18% Growth</span>
+              </div>
+              <EarningsChart />
             </div>
           </div>
         )}
 
-        {/* TAB 2: MENU MANAGER */}
-        {activeTab === "menu" && (
+        {/* ------------------------------------------------------------- */}
+        {/* TAB 2: SHOP & KITCHEN PROFILE */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "profile" && (
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
-              <div>
-                <h1 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.75rem", color: "var(--text)", marginBottom: "0.25rem" }}>
-                  Menu Manager
-                </h1>
-                <p style={{ color: "var(--text-muted)" }}>Add, remove, or toggle availability of dishes for tomorrow's tiffin boxes.</p>
-              </div>
-              <button onClick={() => setShowAddDish(!showAddDish)} className="btn btn-primary">
-                <Plus size={16} /> Add New Dish
-              </button>
+            <div style={{ marginBottom: "1.75rem" }}>
+              <h2 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.5rem", color: "var(--text)", margin: 0 }}>
+                Shop Name & Kitchen Settings 🏪
+              </h2>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", margin: "0.25rem 0 0" }}>
+                Manage your store identity, operating hours, delivery radius, and verified credentials.
+              </p>
             </div>
 
-            {/* Add Dish Form */}
-            {showAddDish && (
-              <div className="card" style={{ padding: "1.75rem", marginBottom: "2rem", background: "var(--surface-alt)" }}>
-                <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.125rem", color: "var(--text)", marginBottom: "1rem" }}>
-                  Add a New Recipe / Dish
-                </h3>
-                <form onSubmit={handleAddDish}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+            <form onSubmit={saveProfile}>
+              <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: "1.5rem" }}>
+                {/* Left Card: Core Store Info */}
+                <div className="card" style={{ padding: "1.75rem" }}>
+                  <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.125rem", color: "var(--text)", marginBottom: "1.25rem" }}>
+                    Shop Identity & Chef Details
+                  </h3>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.25rem" }}>
                     <div>
-                      <label className="label">Dish Name *</label>
+                      <label className="label">Shop / Kitchen Name *</label>
                       <input
                         type="text"
                         required
                         className="input"
-                        placeholder="e.g. Sev Tameta Sabzi"
-                        value={newDish.name}
-                        onChange={(e) => setNewDish({ ...newDish, name: e.target.value })}
+                        value={profile.shopName}
+                        onChange={(e) => setProfile({ ...profile, shopName: e.target.value })}
+                        placeholder="e.g. Meera's Kathiyawadi Kitchen"
                       />
                     </div>
                     <div>
-                      <label className="label">Price (₹)</label>
+                      <label className="label">Head Cook / Owner Name *</label>
                       <input
-                        type="number"
+                        type="text"
                         required
                         className="input"
-                        value={newDish.price}
-                        onChange={(e) => setNewDish({ ...newDish, price: Number(e.target.value) })}
+                        value={profile.headCook}
+                        onChange={(e) => setProfile({ ...profile, headCook: e.target.value })}
+                        placeholder="e.g. Meenaben Patel"
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.25rem" }}>
+                    <div>
+                      <label className="label">Phone / WhatsApp Number *</label>
+                      <input
+                        type="text"
+                        required
+                        className="input"
+                        value={profile.phone}
+                        onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
                       />
                     </div>
                     <div>
-                      <label className="label">Meal Slot</label>
-                      <select
+                      <label className="label">Business Email</label>
+                      <input
+                        type="email"
                         className="input"
-                        value={newDish.mealTime}
-                        onChange={(e) => setNewDish({ ...newDish, mealTime: e.target.value })}
-                      >
-                        <option value="Lunch & Dinner">Lunch & Dinner</option>
-                        <option value="Lunch Only">Lunch Only</option>
-                        <option value="Dinner Only">Dinner Only</option>
-                        <option value="Breakfast">Breakfast</option>
-                      </select>
+                        value={profile.email}
+                        onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                      />
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", gap: "0.75rem" }}>
-                    <button type="submit" className="btn btn-primary">
-                      Save Dish to Menu
-                    </button>
-                    <button type="button" onClick={() => setShowAddDish(false)} className="btn btn-ghost">
-                      Cancel
-                    </button>
+                  <div style={{ marginBottom: "1.25rem" }}>
+                    <label className="label">Kitchen Bio / Specialty</label>
+                    <textarea
+                      rows={3}
+                      className="input"
+                      style={{ background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)", fontFamily: "inherit" }}
+                      value={profile.bio}
+                      onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+                      placeholder="Describe your authentic food style, hygiene standards, and ingredients..."
+                    />
                   </div>
-                </form>
-              </div>
-            )}
 
-            <div className="card" style={{ overflow: "hidden" }}>
+                  <div style={{ marginBottom: "1.25rem" }}>
+                    <label className="label">Full Physical Kitchen Address *</label>
+                    <input
+                      type="text"
+                      required
+                      className="input"
+                      value={profile.address}
+                      onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                    />
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                    <div>
+                      <label className="label">City</label>
+                      <select
+                        className="input"
+                        style={{ background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)" }}
+                        value={profile.city}
+                        onChange={(e) => setProfile({ ...profile, city: e.target.value })}
+                      >
+                        <option value="Rajkot">Rajkot</option>
+                        <option value="Ahmedabad">Ahmedabad</option>
+                        <option value="Surat">Surat</option>
+                        <option value="Vadodara">Vadodara</option>
+                        <option value="Gandhinagar">Gandhinagar</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="label">Delivery Radius (km)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="15"
+                        className="input"
+                        value={profile.deliveryRadiusKm}
+                        onChange={(e) => setProfile({ ...profile, deliveryRadiusKm: Number(e.target.value) })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Card: FSSAI, Operating Hours & Payouts */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                  <div className="card" style={{ padding: "1.5rem" }}>
+                    <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.0625rem", color: "var(--text)", marginBottom: "1rem" }}>
+                      Operational Hours & Dispatch Slots
+                    </h3>
+
+                    <div style={{ marginBottom: "1rem" }}>
+                      <label className="label">Lunch Dispatch Window</label>
+                      <input
+                        type="text"
+                        className="input"
+                        value={profile.lunchSlot}
+                        onChange={(e) => setProfile({ ...profile, lunchSlot: e.target.value })}
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: "1rem" }}>
+                      <label className="label">Dinner Dispatch Window</label>
+                      <input
+                        type="text"
+                        className="input"
+                        value={profile.dinnerSlot}
+                        onChange={(e) => setProfile({ ...profile, dinnerSlot: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">FSSAI License Registration</label>
+                      <div style={{ display: "flex", gap: "0.5rem" }}>
+                        <input
+                          type="text"
+                          className="input"
+                          value={profile.fssaiNumber}
+                          onChange={(e) => setProfile({ ...profile, fssaiNumber: e.target.value })}
+                        />
+                        <span className="badge badge-success" style={{ alignSelf: "center", whiteSpace: "nowrap" }}>
+                          ✓ Certified
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="card" style={{ padding: "1.5rem" }}>
+                    <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.0625rem", color: "var(--text)", marginBottom: "1rem" }}>
+                      Settlement Bank Account
+                    </h3>
+
+                    <div style={{ marginBottom: "0.75rem" }}>
+                      <label className="label">Bank Name</label>
+                      <input
+                        type="text"
+                        className="input"
+                        value={profile.bankName}
+                        onChange={(e) => setProfile({ ...profile, bankName: e.target.value })}
+                      />
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                      <div>
+                        <label className="label">Account Number</label>
+                        <input
+                          type="text"
+                          className="input"
+                          value={profile.bankAccount}
+                          onChange={(e) => setProfile({ ...profile, bankAccount: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="label">IFSC Code</label>
+                        <input
+                          type="text"
+                          className="input"
+                          value={profile.bankIfsc}
+                          onChange={(e) => setProfile({ ...profile, bankIfsc: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: "1.5rem", display: "flex", gap: "1rem" }}>
+                <button type="submit" className="btn btn-primary" style={{ padding: "0.75rem 2rem", fontSize: "0.95rem" }}>
+                  Save Shop & Kitchen Settings
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleKitchenStatus}
+                  className="btn btn-outline"
+                  style={{ color: profile.isOpen ? "var(--danger)" : "var(--secondary)" }}
+                >
+                  {profile.isOpen ? "Pause Kitchen (Take Offline)" : "Turn Kitchen Live (Accept Orders)"}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* TAB 3: MENU MANAGER */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "menu" && (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1.75rem" }}>
+              <div>
+                <h2 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.5rem", color: "var(--text)", margin: 0 }}>
+                  Menu Catalog & Recipes 🍽️
+                </h2>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", margin: "0.25rem 0 0" }}>
+                  Add dishes, configure pricing, and toggle in-stock availability for today&apos;s tiffins.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAddDishModal(true)}
+                className="btn btn-primary"
+                style={{ padding: "0.5rem 1.25rem" }}
+              >
+                <Plus size={16} /> Add New Dish
+              </button>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1.5rem" }}>
+              {/* Category Pills */}
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                {["All", "Main Sabzi", "Dal & Kadhi", "Roti & Breads", "Rice & Khichdi", "Dessert / Sweet"].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setMenuFilterCategory(cat)}
+                    style={{
+                      padding: "0.4rem 0.875rem",
+                      borderRadius: "20px",
+                      border: menuFilterCategory === cat ? "1.5px solid var(--primary)" : "1px solid var(--border)",
+                      background: menuFilterCategory === cat ? "rgba(235, 94, 40, 0.12)" : "var(--surface)",
+                      color: menuFilterCategory === cat ? "var(--primary)" : "var(--text)",
+                      fontSize: "0.8125rem",
+                      fontWeight: menuFilterCategory === cat ? 700 : 500,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search */}
+              <div style={{ position: "relative", minWidth: 240 }}>
+                <Search size={16} style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+                <input
+                  type="text"
+                  placeholder="Search recipes..."
+                  value={menuSearchQuery}
+                  onChange={(e) => setMenuSearchQuery(e.target.value)}
+                  className="input"
+                  style={{ paddingLeft: "2.25rem", height: 38, fontSize: "0.85rem" }}
+                />
+              </div>
+            </div>
+
+            {/* Dishes Table */}
+            <div className="card" style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface-alt)" }}>
-                    {["Dish Name", "Category", "Meal Time", "Price", "Availability", "Action"].map((h) => (
-                      <th key={h} style={{ padding: "0.875rem 1.25rem", textAlign: "left", fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-muted)", fontFamily: "Poppins" }}>
+                    {["Dish Name", "Category", "Meal Slot", "Dietary", "Price", "Availability", "Actions"].map((h) => (
+                      <th
+                        key={h}
+                        style={{
+                          padding: "0.875rem 1.25rem",
+                          textAlign: "left",
+                          fontSize: "0.8125rem",
+                          fontWeight: 700,
+                          color: "var(--text-muted)",
+                          fontFamily: "Poppins",
+                        }}
+                      >
                         {h}
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {menuItems.map((dish) => (
-                    <tr key={dish.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                      <td style={{ padding: "1rem 1.25rem", fontWeight: 600, color: "var(--text)", fontSize: "0.9375rem" }}>{dish.name}</td>
-                      <td style={{ padding: "1rem 1.25rem" }}>
-                        <span className={`badge ${dish.type === "veg" ? "badge-veg" : "badge-nonveg"}`}>
-                          <span className={dish.type === "veg" ? "veg-dot" : "nonveg-dot"} />
-                          {dish.type.toUpperCase()}
-                        </span>
-                      </td>
-                      <td style={{ padding: "1rem 1.25rem", fontSize: "0.875rem", color: "var(--text-muted)" }}>{dish.mealTime}</td>
-                      <td style={{ padding: "1rem 1.25rem", fontWeight: 700, color: "var(--text)" }}>₹{dish.price}</td>
-                      <td style={{ padding: "1rem 1.25rem" }}>
-                        <button
-                          onClick={() => toggleAvailability(dish.id)}
-                          className={`badge ${dish.available ? "badge-active" : "badge-cancelled"}`}
-                          style={{ cursor: "pointer", border: "none" }}
-                        >
-                          {dish.available ? "In Stock (Available)" : "Sold Out (Hidden)"}
-                        </button>
-                      </td>
-                      <td style={{ padding: "1rem 1.25rem" }}>
-                        <button
-                          onClick={() => setMenuItems(menuItems.filter((m) => m.id !== dish.id))}
-                          className="btn btn-ghost"
-                          style={{ color: "var(--danger)", padding: "0.25rem 0.5rem" }}
-                          aria-label="Delete dish"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {menuItems
+                    .filter(d => menuFilterCategory === "All" || d.category === menuFilterCategory)
+                    .filter(d => !menuSearchQuery || d.name.toLowerCase().includes(menuSearchQuery.toLowerCase()))
+                    .map((dish) => (
+                      <tr key={dish.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "1rem 1.25rem" }}>
+                          <p style={{ fontWeight: 700, color: "var(--text)", margin: 0, fontSize: "0.9375rem" }}>{dish.name}</p>
+                          {dish.desc && <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: "0.2rem 0 0" }}>{dish.desc}</p>}
+                        </td>
+                        <td style={{ padding: "1rem 1.25rem", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
+                          <span style={{ padding: "0.25rem 0.5rem", borderRadius: "6px", background: "var(--surface-alt)", border: "1px solid var(--border)" }}>
+                            {dish.category}
+                          </span>
+                        </td>
+                        <td style={{ padding: "1rem 1.25rem", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
+                          {dish.mealTime}
+                        </td>
+                        <td style={{ padding: "1rem 1.25rem" }}>
+                          <span className={`badge ${dish.type === "veg" ? "badge-veg" : "badge-nonveg"}`}>
+                            <span className={dish.type === "veg" ? "veg-dot" : "nonveg-dot"} />
+                            {dish.type.toUpperCase()}
+                          </span>
+                        </td>
+                        <td style={{ padding: "1rem 1.25rem", fontWeight: 700, color: "var(--text)", fontSize: "0.95rem" }}>
+                          ₹{dish.price}
+                        </td>
+                        <td style={{ padding: "1rem 1.25rem" }}>
+                          <button
+                            type="button"
+                            onClick={() => toggleDishStock(dish.id)}
+                            style={{
+                              padding: "0.3rem 0.75rem",
+                              borderRadius: "20px",
+                              border: "none",
+                              background: dish.available ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
+                              color: dish.available ? "var(--secondary)" : "var(--danger)",
+                              fontSize: "0.75rem",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                            }}
+                          >
+                            {dish.available ? "✓ In Stock" : "✗ Sold Out"}
+                          </button>
+                        </td>
+                        <td style={{ padding: "1rem 1.25rem" }}>
+                          <div style={{ display: "flex", gap: "0.5rem" }}>
+                            <button
+                              type="button"
+                              onClick={() => setEditingDish(dish)}
+                              className="btn btn-ghost"
+                              style={{ padding: "0.3rem 0.5rem" }}
+                              aria-label="Edit dish"
+                            >
+                              <Edit2 size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteDish(dish.id, dish.name)}
+                              className="btn btn-ghost"
+                              style={{ color: "var(--danger)", padding: "0.3rem 0.5rem" }}
+                              aria-label="Delete dish"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
+
+            {/* Add Dish Modal */}
+            {showAddDishModal && (
+              <div
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  background: "rgba(0,0,0,0.5)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 9999,
+                  padding: "1rem",
+                }}
+              >
+                <div className="card" style={{ width: "100%", maxWidth: 520, padding: "2rem" }}>
+                  <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)", marginBottom: "1.25rem" }}>
+                    Add New Recipe to Catalog
+                  </h3>
+                  <form onSubmit={handleAddDish}>
+                    <div style={{ marginBottom: "1rem" }}>
+                      <label className="label">Dish Name *</label>
+                      <input
+                        type="text"
+                        required
+                        className="input"
+                        placeholder="e.g. Gujarati Undhiyu"
+                        value={newDish.name}
+                        onChange={(e) => setNewDish({ ...newDish, name: e.target.value })}
+                      />
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                      <div>
+                        <label className="label">Category</label>
+                        <select
+                          className="input"
+                          value={newDish.category}
+                          onChange={(e) => setNewDish({ ...newDish, category: e.target.value })}
+                        >
+                          <option value="Main Sabzi">Main Sabzi</option>
+                          <option value="Dal & Kadhi">Dal & Kadhi</option>
+                          <option value="Roti & Breads">Roti & Breads</option>
+                          <option value="Rice & Khichdi">Rice & Khichdi</option>
+                          <option value="Dessert / Sweet">Dessert / Sweet</option>
+                          <option value="Farsan / Snacks">Farsan / Snacks</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="label">Price per Portion (₹)</label>
+                        <input
+                          type="number"
+                          required
+                          min="10"
+                          className="input"
+                          value={newDish.price}
+                          onChange={(e) => setNewDish({ ...newDish, price: Number(e.target.value) })}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                      <div>
+                        <label className="label">Meal Slot</label>
+                        <select
+                          className="input"
+                          value={newDish.mealTime}
+                          onChange={(e) => setNewDish({ ...newDish, mealTime: e.target.value })}
+                        >
+                          <option value="Both">Both Lunch & Dinner</option>
+                          <option value="Lunch">Lunch Only</option>
+                          <option value="Dinner">Dinner Only</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="label">Dietary Classification</label>
+                        <select
+                          className="input"
+                          value={newDish.type}
+                          onChange={(e) => setNewDish({ ...newDish, type: e.target.value })}
+                        >
+                          <option value="veg">Pure Vegetarian</option>
+                          <option value="jain">Jain (No Onion/Garlic)</option>
+                          <option value="nonveg">Non-Veg</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: "1.5rem" }}>
+                      <label className="label">Short Description / Key Ingredients</label>
+                      <input
+                        type="text"
+                        className="input"
+                        placeholder="e.g. Cooked with pure groundnut oil and fresh vegetables"
+                        value={newDish.desc}
+                        onChange={(e) => setNewDish({ ...newDish, desc: e.target.value })}
+                      />
+                    </div>
+
+                    <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+                      <button type="button" onClick={() => setShowAddDishModal(false)} className="btn btn-ghost">
+                        Cancel
+                      </button>
+                      <button type="submit" className="btn btn-primary">
+                        Save to Menu
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* Edit Dish Modal */}
+            {editingDish && (
+              <div
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  background: "rgba(0,0,0,0.5)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 9999,
+                  padding: "1rem",
+                }}
+              >
+                <div className="card" style={{ width: "100%", maxWidth: 520, padding: "2rem" }}>
+                  <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)", marginBottom: "1.25rem" }}>
+                    Edit Recipe: {editingDish.name}
+                  </h3>
+                  <form onSubmit={handleUpdateDish}>
+                    <div style={{ marginBottom: "1rem" }}>
+                      <label className="label">Dish Name *</label>
+                      <input
+                        type="text"
+                        required
+                        className="input"
+                        value={editingDish.name}
+                        onChange={(e) => setEditingDish({ ...editingDish, name: e.target.value })}
+                      />
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                      <div>
+                        <label className="label">Category</label>
+                        <select
+                          className="input"
+                          value={editingDish.category}
+                          onChange={(e) => setEditingDish({ ...editingDish, category: e.target.value })}
+                        >
+                          <option value="Main Sabzi">Main Sabzi</option>
+                          <option value="Dal & Kadhi">Dal & Kadhi</option>
+                          <option value="Roti & Breads">Roti & Breads</option>
+                          <option value="Rice & Khichdi">Rice & Khichdi</option>
+                          <option value="Dessert / Sweet">Dessert / Sweet</option>
+                          <option value="Farsan / Snacks">Farsan / Snacks</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="label">Price per Portion (₹)</label>
+                        <input
+                          type="number"
+                          required
+                          min="10"
+                          className="input"
+                          value={editingDish.price}
+                          onChange={(e) => setEditingDish({ ...editingDish, price: Number(e.target.value) })}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: "1.5rem" }}>
+                      <label className="label">Description</label>
+                      <input
+                        type="text"
+                        className="input"
+                        value={editingDish.desc}
+                        onChange={(e) => setEditingDish({ ...editingDish, desc: e.target.value })}
+                      />
+                    </div>
+
+                    <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+                      <button type="button" onClick={() => setEditingDish(null)} className="btn btn-ghost">
+                        Cancel
+                      </button>
+                      <button type="submit" className="btn btn-primary">
+                        Update Recipe
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* TAB 3: PLANS & PRICING */}
+        {/* ------------------------------------------------------------- */}
+        {/* TAB 4: WEEK-WISE MEAL PLAN ("week ways paln") */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "weekly" && (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1.75rem" }}>
+              <div>
+                <h2 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.5rem", color: "var(--text)", margin: 0 }}>
+                  7-Day Rotating Weekly Meal Plan 📅
+                </h2>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", margin: "0.25rem 0 0" }}>
+                  Customers view this schedule before subscribing. Customize your Monday to Sunday lunch and dinner dishes.
+                </p>
+              </div>
+
+              <div style={{ display: "flex", gap: "0.75rem" }}>
+                <button
+                  onClick={() => {
+                    setDayToEdit({ ...weeklyPlan[selectedDayIndex] });
+                    setShowEditDayModal(true);
+                  }}
+                  className="btn btn-outline"
+                >
+                  <Edit2 size={15} /> Edit {weeklyPlan[selectedDayIndex]?.day}
+                </button>
+                <button
+                  onClick={handlePublishWeeklyPlan}
+                  className="btn btn-primary"
+                >
+                  <CheckCircle size={15} /> Publish Weekly Plan
+                </button>
+              </div>
+            </div>
+
+            {/* Day Switcher Tabs */}
+            <div style={{ display: "flex", gap: "0.5rem", overflowX: "auto", paddingBottom: "0.75rem", marginBottom: "1.5rem" }}>
+              {weeklyPlan.map((d, idx) => (
+                <button
+                  key={d.day}
+                  type="button"
+                  onClick={() => setSelectedDayIndex(idx)}
+                  style={{
+                    padding: "0.625rem 1.25rem",
+                    borderRadius: "10px",
+                    border: selectedDayIndex === idx ? "2px solid var(--primary)" : "1px solid var(--border)",
+                    background: selectedDayIndex === idx ? "rgba(235, 94, 40, 0.12)" : "var(--surface)",
+                    color: selectedDayIndex === idx ? "var(--primary)" : "var(--text)",
+                    fontWeight: 700,
+                    fontSize: "0.9rem",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  {d.day}
+                </button>
+              ))}
+            </div>
+
+            {/* Selected Day View */}
+            {weeklyPlan[selectedDayIndex] && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+                {/* Lunch Box Schedule */}
+                <div className="card" style={{ padding: "1.75rem", borderLeft: "4px solid var(--primary)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+                    <div>
+                      <span className="badge badge-primary">LUNCH SERVICE</span>
+                      <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)", margin: "0.5rem 0 0" }}>
+                        {weeklyPlan[selectedDayIndex].day} Afternoon Tiffin
+                      </h3>
+                      <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: "0.25rem 0 0" }}>
+                        Dispatch Slot: {profile.lunchSlot}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    <div style={{ padding: "0.875rem", background: "var(--surface-alt)", borderRadius: "8px" }}>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", margin: 0 }}>Sabzi 1 (Special)</p>
+                      <p style={{ fontWeight: 700, color: "var(--text)", margin: "0.25rem 0 0" }}>{weeklyPlan[selectedDayIndex].lunch.sabzi1}</p>
+                    </div>
+                    <div style={{ padding: "0.875rem", background: "var(--surface-alt)", borderRadius: "8px" }}>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", margin: 0 }}>Sabzi 2 (Dry / Kathol)</p>
+                      <p style={{ fontWeight: 700, color: "var(--text)", margin: "0.25rem 0 0" }}>{weeklyPlan[selectedDayIndex].lunch.sabzi2}</p>
+                    </div>
+                    <div style={{ padding: "0.875rem", background: "var(--surface-alt)", borderRadius: "8px" }}>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", margin: 0 }}>Dal / Kadhi</p>
+                      <p style={{ fontWeight: 700, color: "var(--text)", margin: "0.25rem 0 0" }}>{weeklyPlan[selectedDayIndex].lunch.dalKadhi}</p>
+                    </div>
+                    <div style={{ padding: "0.875rem", background: "var(--surface-alt)", borderRadius: "8px" }}>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", margin: 0 }}>Roti & Rice</p>
+                      <p style={{ fontWeight: 700, color: "var(--text)", margin: "0.25rem 0 0" }}>{weeklyPlan[selectedDayIndex].lunch.bread} + {weeklyPlan[selectedDayIndex].lunch.rice}</p>
+                    </div>
+                    <div style={{ padding: "0.875rem", background: "var(--surface-alt)", borderRadius: "8px" }}>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", margin: 0 }}>Side / Dessert</p>
+                      <p style={{ fontWeight: 700, color: "var(--primary)", margin: "0.25rem 0 0" }}>{weeklyPlan[selectedDayIndex].lunch.sweetOrSide}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dinner Box Schedule */}
+                <div className="card" style={{ padding: "1.75rem", borderLeft: "4px solid var(--secondary)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+                    <div>
+                      <span className="badge badge-success">DINNER SERVICE</span>
+                      <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)", margin: "0.5rem 0 0" }}>
+                        {weeklyPlan[selectedDayIndex].day} Evening Meal
+                      </h3>
+                      <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: "0.25rem 0 0" }}>
+                        Dispatch Slot: {profile.dinnerSlot}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    <div style={{ padding: "0.875rem", background: "var(--surface-alt)", borderRadius: "8px" }}>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", margin: 0 }}>Main Kathiyawadi / Desi Dish</p>
+                      <p style={{ fontWeight: 700, color: "var(--text)", margin: "0.25rem 0 0" }}>{weeklyPlan[selectedDayIndex].dinner.mainDish}</p>
+                    </div>
+                    <div style={{ padding: "0.875rem", background: "var(--surface-alt)", borderRadius: "8px" }}>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", margin: 0 }}>Rotlo / Bhakri / Roti</p>
+                      <p style={{ fontWeight: 700, color: "var(--text)", margin: "0.25rem 0 0" }}>{weeklyPlan[selectedDayIndex].dinner.bread}</p>
+                    </div>
+                    <div style={{ padding: "0.875rem", background: "var(--surface-alt)", borderRadius: "8px" }}>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", margin: 0 }}>Kadhi / Dal</p>
+                      <p style={{ fontWeight: 700, color: "var(--text)", margin: "0.25rem 0 0" }}>{weeklyPlan[selectedDayIndex].dinner.dalKadhi}</p>
+                    </div>
+                    <div style={{ padding: "0.875rem", background: "var(--surface-alt)", borderRadius: "8px" }}>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", margin: 0 }}>Khichdi / Rice</p>
+                      <p style={{ fontWeight: 700, color: "var(--text)", margin: "0.25rem 0 0" }}>{weeklyPlan[selectedDayIndex].dinner.rice}</p>
+                    </div>
+                    <div style={{ padding: "0.875rem", background: "var(--surface-alt)", borderRadius: "8px" }}>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", margin: 0 }}>Kathiyawadi Chutney & Salad</p>
+                      <p style={{ fontWeight: 700, color: "var(--secondary)", margin: "0.25rem 0 0" }}>{weeklyPlan[selectedDayIndex].dinner.side}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Edit Day Modal */}
+            {showEditDayModal && dayToEdit && (
+              <div
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  background: "rgba(0,0,0,0.5)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 9999,
+                  padding: "1rem",
+                }}
+              >
+                <div className="card" style={{ width: "100%", maxWidth: 640, padding: "2rem", maxHeight: "90vh", overflowY: "auto" }}>
+                  <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)", marginBottom: "1.25rem" }}>
+                    Edit {dayToEdit.day}&apos;s Meal Schedule
+                  </h3>
+
+                  <form onSubmit={handleSaveDayPlan}>
+                    <p style={{ fontWeight: 700, color: "var(--primary)", fontSize: "0.9rem", marginBottom: "0.5rem" }}>Lunch Dishes</p>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
+                      <div>
+                        <label className="label">Sabzi 1</label>
+                        <input
+                          type="text"
+                          className="input"
+                          value={dayToEdit.lunch.sabzi1}
+                          onChange={(e) => setDayToEdit({ ...dayToEdit, lunch: { ...dayToEdit.lunch, sabzi1: e.target.value } })}
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Sabzi 2</label>
+                        <input
+                          type="text"
+                          className="input"
+                          value={dayToEdit.lunch.sabzi2}
+                          onChange={(e) => setDayToEdit({ ...dayToEdit, lunch: { ...dayToEdit.lunch, sabzi2: e.target.value } })}
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Dal / Kadhi</label>
+                        <input
+                          type="text"
+                          className="input"
+                          value={dayToEdit.lunch.dalKadhi}
+                          onChange={(e) => setDayToEdit({ ...dayToEdit, lunch: { ...dayToEdit.lunch, dalKadhi: e.target.value } })}
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Bread & Rice</label>
+                        <input
+                          type="text"
+                          className="input"
+                          value={dayToEdit.lunch.bread}
+                          onChange={(e) => setDayToEdit({ ...dayToEdit, lunch: { ...dayToEdit.lunch, bread: e.target.value } })}
+                        />
+                      </div>
+                      <div style={{ gridColumn: "span 2" }}>
+                        <label className="label">Side / Sweet</label>
+                        <input
+                          type="text"
+                          className="input"
+                          value={dayToEdit.lunch.sweetOrSide}
+                          onChange={(e) => setDayToEdit({ ...dayToEdit, lunch: { ...dayToEdit.lunch, sweetOrSide: e.target.value } })}
+                        />
+                      </div>
+                    </div>
+
+                    <p style={{ fontWeight: 700, color: "var(--secondary)", fontSize: "0.9rem", marginBottom: "0.5rem", marginTop: "1rem" }}>Dinner Dishes</p>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1.5rem" }}>
+                      <div>
+                        <label className="label">Main Dish</label>
+                        <input
+                          type="text"
+                          className="input"
+                          value={dayToEdit.dinner.mainDish}
+                          onChange={(e) => setDayToEdit({ ...dayToEdit, dinner: { ...dayToEdit.dinner, mainDish: e.target.value } })}
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Rotlo / Bread</label>
+                        <input
+                          type="text"
+                          className="input"
+                          value={dayToEdit.dinner.bread}
+                          onChange={(e) => setDayToEdit({ ...dayToEdit, dinner: { ...dayToEdit.dinner, bread: e.target.value } })}
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Kadhi</label>
+                        <input
+                          type="text"
+                          className="input"
+                          value={dayToEdit.dinner.dalKadhi}
+                          onChange={(e) => setDayToEdit({ ...dayToEdit, dinner: { ...dayToEdit.dinner, dalKadhi: e.target.value } })}
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Khichdi / Rice</label>
+                        <input
+                          type="text"
+                          className="input"
+                          value={dayToEdit.dinner.rice}
+                          onChange={(e) => setDayToEdit({ ...dayToEdit, dinner: { ...dayToEdit.dinner, rice: e.target.value } })}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+                      <button type="button" onClick={() => setShowEditDayModal(false)} className="btn btn-ghost">
+                        Cancel
+                      </button>
+                      <button type="submit" className="btn btn-primary">
+                        Save Day Schedule
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* TAB 5: PLANS & PRICING ("add plns") */}
+        {/* ------------------------------------------------------------- */}
         {activeTab === "plans" && (
           <div>
-            <div style={{ marginBottom: "2rem" }}>
-              <h1 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.75rem", color: "var(--text)", marginBottom: "0.25rem" }}>
-                Plans & Subscription Pricing
-              </h1>
-              <p style={{ color: "var(--text-muted)" }}>Configure your daily trial, weekly, and monthly rates offered to subscribers.</p>
+            <div style={{ marginBottom: "1.75rem" }}>
+              <h2 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.5rem", color: "var(--text)", margin: 0 }}>
+                Plans & Subscription Pricing 💰
+              </h2>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", margin: "0.25rem 0 0" }}>
+                Configure your daily trial, weekly, and monthly meal subscriptions offered to neighborhood customers.
+              </p>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
-              {[
-                { title: "Daily Trial Plan", price: 120, perMeal: 120, billing: "Pay-as-you-go", desc: "1 Dal, 2 Sabzi, 4 Phulkas, Rice, Salad & Papad", color: "var(--primary)" },
-                { title: "Weekly Plan (7 Days)", price: 749, perMeal: 107, billing: "Billed weekly", desc: "Save 11% + Weekend special dessert & Kathiyawadi menu", popular: true, color: "var(--secondary)" },
-                { title: "Monthly Plan (30 Days)", price: 2799, perMeal: 93, billing: "Billed monthly", desc: "Best value. Includes up to 5 paused delivery days.", color: "var(--info)" },
-              ].map((p, idx) => (
-                <div key={idx} className="card" style={{ padding: "2rem", border: p.popular ? "2px solid var(--primary)" : "1px solid var(--border)" }}>
-                  {p.popular && <span className="badge badge-primary" style={{ marginBottom: "0.75rem" }}>Most Subscribed</span>}
-                  <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)", marginBottom: "0.5rem" }}>{p.title}</h3>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                    <span style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "2rem", color: p.color }}>₹{p.price}</span>
-                    <span style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>/ {p.billing}</span>
+            {/* Plans Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem", marginBottom: "2rem" }}>
+              {plans.map((p) => {
+                const perMeal = Math.round(p.price / p.mealsIncluded);
+                const cookTakeHome = Math.round(p.price * 0.90);
+                return (
+                  <div
+                    key={p.id}
+                    className="card"
+                    style={{
+                      padding: "2rem",
+                      border: p.badge === "Popular" ? "2px solid var(--primary)" : "1px solid var(--border)",
+                      display: "flex",
+                      flexDirection: "column",
+                      position: "relative",
+                    }}
+                  >
+                    {p.badge && (
+                      <span
+                        className="badge badge-primary"
+                        style={{ position: "absolute", top: "1rem", right: "1rem" }}
+                      >
+                        {p.badge}
+                      </span>
+                    )}
+
+                    <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)", margin: "0 0 0.5rem" }}>
+                      {p.name}
+                    </h3>
+
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                      <span style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "2.25rem", color: "var(--primary)" }}>
+                        ₹{p.price}
+                      </span>
+                      <span style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>
+                        / {p.billingCycle}
+                      </span>
+                    </div>
+
+                    <p style={{ fontSize: "0.85rem", color: "var(--secondary)", fontWeight: 700, margin: "0 0 1rem" }}>
+                      ₹{perMeal} per meal ({p.mealsIncluded} meals included)
+                    </p>
+
+                    <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", lineHeight: 1.6, flex: 1, margin: "0 0 1.25rem" }}>
+                      {p.description}
+                    </p>
+
+                    <div style={{ background: "var(--surface-alt)", padding: "0.75rem", borderRadius: "8px", marginBottom: "1.25rem", fontSize: "0.78rem" }}>
+                      <p style={{ margin: "0 0 0.25rem", color: "var(--text-muted)" }}>
+                        Your Take-Home (90%): <strong style={{ color: "var(--secondary)" }}>₹{cookTakeHome}</strong>
+                      </p>
+                      <p style={{ margin: 0, color: "var(--text-muted)" }}>
+                        Max Pause Days: <strong>{p.pauseAllowedDays} days</strong>
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingPlan({ ...p });
+                        setShowEditPlanModal(true);
+                      }}
+                      className="btn btn-outline"
+                      style={{ width: "100%", justifyContent: "center" }}
+                    >
+                      <Edit2 size={14} /> Edit Plan Details & Rates
+                    </button>
                   </div>
-                  <p style={{ fontSize: "0.85rem", color: "var(--secondary)", fontWeight: 600, marginBottom: "1rem" }}>₹{p.perMeal} per meal</p>
-                  <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", lineHeight: 1.6, marginBottom: "1.5rem" }}>{p.desc}</p>
-                  <button className="btn btn-outline" style={{ width: "100%", justifyContent: "center" }}>
-                    Edit Plan Details
+                );
+              })}
+            </div>
+
+            {/* Edit Plan Modal */}
+            {showEditPlanModal && editingPlan && (
+              <div
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  background: "rgba(0,0,0,0.5)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 9999,
+                  padding: "1rem",
+                }}
+              >
+                <div className="card" style={{ width: "100%", maxWidth: 480, padding: "2rem" }}>
+                  <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)", marginBottom: "1.25rem" }}>
+                    Configure Plan: {editingPlan.name}
+                  </h3>
+
+                  <form onSubmit={handleSavePlan}>
+                    <div style={{ marginBottom: "1rem" }}>
+                      <label className="label">Plan Name</label>
+                      <input
+                        type="text"
+                        required
+                        className="input"
+                        value={editingPlan.name}
+                        onChange={(e) => setEditingPlan({ ...editingPlan, name: e.target.value })}
+                      />
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                      <div>
+                        <label className="label">Total Price (₹)</label>
+                        <input
+                          type="number"
+                          required
+                          min="50"
+                          className="input"
+                          value={editingPlan.price}
+                          onChange={(e) => setEditingPlan({ ...editingPlan, price: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Meals Included</label>
+                        <input
+                          type="number"
+                          required
+                          min="1"
+                          className="input"
+                          value={editingPlan.mealsIncluded}
+                          onChange={(e) => setEditingPlan({ ...editingPlan, mealsIncluded: Number(e.target.value) })}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: "1rem" }}>
+                      <label className="label">Max Pause Allowance (Days)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="15"
+                        className="input"
+                        value={editingPlan.pauseAllowedDays}
+                        onChange={(e) => setEditingPlan({ ...editingPlan, pauseAllowedDays: Number(e.target.value) })}
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: "1.5rem" }}>
+                      <label className="label">Customer Description / Perks</label>
+                      <textarea
+                        rows={3}
+                        className="input"
+                        style={{ background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)", fontFamily: "inherit" }}
+                        value={editingPlan.description}
+                        onChange={(e) => setEditingPlan({ ...editingPlan, description: e.target.value })}
+                      />
+                    </div>
+
+                    <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+                      <button type="button" onClick={() => setShowEditPlanModal(false)} className="btn btn-ghost">
+                        Cancel
+                      </button>
+                      <button type="submit" className="btn btn-primary">
+                        Save Plan Rates
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* TAB 6: SUBSCRIBERS ("and his subscription") */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "subscribers" && (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1.75rem" }}>
+              <div>
+                <h2 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.5rem", color: "var(--text)", margin: 0 }}>
+                  Active Subscribers & Customers 👥
+                </h2>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", margin: "0.25rem 0 0" }}>
+                  Manage ongoing subscriptions, meal progress, dietary notes, and direct WhatsApp contact.
+                </p>
+              </div>
+
+              <div style={{ display: "flex", gap: "0.75rem" }}>
+                <button
+                  type="button"
+                  onClick={handleSimulateTestSubscriber}
+                  className="btn btn-outline"
+                >
+                  <Sparkles size={15} /> Simulate Test Customer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddSubscriberModal(true)}
+                  className="btn btn-primary"
+                >
+                  <Plus size={15} /> Add Subscriber Manually
+                </button>
+              </div>
+            </div>
+
+            {subscribers.length === 0 ? (
+              <div className="card" style={{ padding: "3.5rem 2rem", textAlign: "center" }}>
+                <Users size={48} style={{ color: "var(--text-muted)", margin: "0 auto 1rem" }} />
+                <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)", marginBottom: "0.5rem" }}>
+                  No Active Subscribers Yet
+                </h3>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.9375rem", maxWidth: 460, margin: "0 auto 1.5rem" }}>
+                  Your kitchen is verified and listed on HomeFeast. As residents in {profile.city} choose your meal plans, they will appear here with automated daily dispatch tickets.
+                </p>
+                <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center" }}>
+                  <button onClick={handleSimulateTestSubscriber} className="btn btn-primary">
+                    <Sparkles size={15} /> Add Sample Subscriber to Preview
+                  </button>
+                  <button onClick={() => setShowAddSubscriberModal(true)} className="btn btn-outline">
+                    <Plus size={15} /> Register Offline Customer
                   </button>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {subscribers.map((sub) => {
+                  const whatsappUrl = `https://wa.me/${sub.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
+                    `Hello ${sub.name}, this is ${profile.shopName} regarding your tiffin subscription. Please let us know if you need any adjustments to today's meal!`
+                  )}`;
+                  return (
+                    <div key={sub.id} className="card" style={{ padding: "1.5rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                            <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.125rem", color: "var(--text)", margin: 0 }}>
+                              {sub.name}
+                            </h3>
+                            <span
+                              className={`badge ${
+                                sub.status === "ACTIVE" ? "badge-success" : "badge-warning"
+                              }`}
+                            >
+                              {sub.status}
+                            </span>
+                          </div>
+                          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", margin: "0.35rem 0" }}>
+                            Plan: <strong>{sub.plan}</strong> • Slot: <strong>{sub.slot}</strong> • Started: {sub.startDate}
+                          </p>
+                          <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", margin: 0 }}>
+                            📍 Delivery Address: {sub.address}
+                          </p>
+                          {sub.dietPreference && (
+                            <p style={{ fontSize: "0.8125rem", color: "var(--primary)", fontWeight: 600, margin: "0.35rem 0 0" }}>
+                              Note: &ldquo;{sub.dietPreference}&rdquo;
+                            </p>
+                          )}
+                        </div>
 
-        {/* TAB 4: REQUESTS INBOX */}
-        {activeTab === "requests" && (
-          <div>
-            <div style={{ marginBottom: "2rem" }}>
-              <h1 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.75rem", color: "var(--text)", marginBottom: "0.25rem" }}>
-                Subscription Requests Inbox
-              </h1>
-              <p style={{ color: "var(--text-muted)" }}>Approve or decline incoming student & professional subscription requests.</p>
-            </div>
+                        {/* Progress and Remaining Meals */}
+                        <div style={{ textAlign: "right", minWidth: 160 }}>
+                          <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", margin: 0 }}>
+                            Meals Remaining
+                          </p>
+                          <p style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.5rem", color: "var(--primary)", margin: "0.15rem 0" }}>
+                            {sub.remainingMeals} / {sub.totalMeals}
+                          </p>
+                        </div>
+                      </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              {requests.map((req) => (
-                <div key={req.id} className="card" style={{ padding: "1.75rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
-                    <div>
-                      <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.125rem", color: "var(--text)" }}>{req.customerName}</h3>
-                      <p style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>Plan: {req.plan} • Slot: {req.slot} • Start Date: {req.startDate}</p>
-                      {req.note && <p style={{ fontSize: "0.8125rem", color: "var(--primary)", marginTop: "0.25rem" }}>Special Instruction: &ldquo;{req.note}&rdquo;</p>}
+                      {/* Action Bar */}
+                      <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", paddingTop: "0.75rem", borderTop: "1px solid var(--border)" }}>
+                        <a
+                          href={whatsappUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-outline"
+                          style={{ fontSize: "0.8125rem", padding: "0.4rem 0.875rem", color: "var(--secondary)" }}
+                        >
+                          <MessageSquare size={14} /> WhatsApp Customer
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePauseSubscriber(sub.id)}
+                          className="btn btn-outline"
+                          style={{ fontSize: "0.8125rem", padding: "0.4rem 0.875rem" }}
+                        >
+                          {sub.status === "ACTIVE" ? <Pause size={14} /> : <Play size={14} />}
+                          {sub.status === "ACTIVE" ? "Pause Meal Dispatch" : "Resume Meal Dispatch"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSubscriber(sub.id, sub.name)}
+                          className="btn btn-ghost"
+                          style={{ color: "var(--danger)", fontSize: "0.8125rem", padding: "0.4rem 0.875rem", marginLeft: "auto" }}
+                        >
+                          <Trash2 size={14} /> Remove Subscriber
+                        </button>
+                      </div>
                     </div>
-                    <span className="badge badge-pending">PENDING ACCEPTANCE</span>
-                  </div>
+                  );
+                })}
+              </div>
+            )}
 
-                  <div style={{ display: "flex", gap: "1rem" }}>
-                    <button onClick={() => handleAcceptRequest(req.id)} className="btn btn-secondary">
-                      <CheckCircle size={16} /> Accept & Start Preparing
-                    </button>
-                    <button onClick={() => handleRejectRequest(req.id)} className="btn btn-ghost" style={{ color: "var(--danger)" }}>
-                      <XCircle size={16} /> Decline Request
-                    </button>
-                  </div>
+            {/* Add Subscriber Modal */}
+            {showAddSubscriberModal && (
+              <div
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  background: "rgba(0,0,0,0.5)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 9999,
+                  padding: "1rem",
+                }}
+              >
+                <div className="card" style={{ width: "100%", maxWidth: 500, padding: "2rem" }}>
+                  <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)", marginBottom: "1.25rem" }}>
+                    Register Subscriber
+                  </h3>
+
+                  <form onSubmit={handleAddSubscriber}>
+                    <div style={{ marginBottom: "1rem" }}>
+                      <label className="label">Customer Full Name *</label>
+                      <input
+                        type="text"
+                        required
+                        className="input"
+                        placeholder="e.g. Rahul Mehta"
+                        value={newSubscriber.name}
+                        onChange={(e) => setNewSubscriber({ ...newSubscriber, name: e.target.value })}
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: "1rem" }}>
+                      <label className="label">Mobile Number *</label>
+                      <input
+                        type="text"
+                        required
+                        className="input"
+                        placeholder="e.g. +91 98250 12345"
+                        value={newSubscriber.phone}
+                        onChange={(e) => setNewSubscriber({ ...newSubscriber, phone: e.target.value })}
+                      />
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                      <div>
+                        <label className="label">Subscription Plan</label>
+                        <select
+                          className="input"
+                          value={newSubscriber.plan}
+                          onChange={(e) => setNewSubscriber({ ...newSubscriber, plan: e.target.value })}
+                        >
+                          <option value="Daily Trial Plan">Daily Trial Plan</option>
+                          <option value="Weekly Saver Plan (7 Days)">Weekly Saver Plan (7 Days)</option>
+                          <option value="Monthly Home Plan (30 Days)">Monthly Home Plan (30 Days)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="label">Delivery Slot</label>
+                        <select
+                          className="input"
+                          value={newSubscriber.slot}
+                          onChange={(e) => setNewSubscriber({ ...newSubscriber, slot: e.target.value })}
+                        >
+                          <option value="Lunch (12–1:30 PM)">Lunch (12–1:30 PM)</option>
+                          <option value="Dinner (7:30–9 PM)">Dinner (7:30–9 PM)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: "1rem" }}>
+                      <label className="label">Delivery Address</label>
+                      <input
+                        type="text"
+                        required
+                        className="input"
+                        placeholder="e.g. Flat 301, Pushpak Apts, Kalavad Rd"
+                        value={newSubscriber.address}
+                        onChange={(e) => setNewSubscriber({ ...newSubscriber, address: e.target.value })}
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: "1.5rem" }}>
+                      <label className="label">Dietary Instructions</label>
+                      <input
+                        type="text"
+                        className="input"
+                        placeholder="e.g. Jain (No garlic), less oil, extra roti"
+                        value={newSubscriber.dietPreference}
+                        onChange={(e) => setNewSubscriber({ ...newSubscriber, dietPreference: e.target.value })}
+                      />
+                    </div>
+
+                    <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+                      <button type="button" onClick={() => setShowAddSubscriberModal(false)} className="btn btn-ghost">
+                        Cancel
+                      </button>
+                      <button type="submit" className="btn btn-primary">
+                        Add Subscriber & Start Tiffin
+                      </button>
+                    </div>
+                  </form>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* TAB 5: TODAY'S ORDERS */}
+        {/* ------------------------------------------------------------- */}
+        {/* TAB 7: TODAY'S PACKING & DISPATCH */}
+        {/* ------------------------------------------------------------- */}
         {activeTab === "orders" && (
           <div>
-            <div style={{ marginBottom: "2rem" }}>
-              <h1 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.75rem", color: "var(--text)", marginBottom: "0.25rem" }}>
-                Today&apos;s Tiffin Packing & Dispatch
-              </h1>
-              <p style={{ color: "var(--text-muted)" }}>Mark meals as in-preparation, out for delivery, or handed over to customer.</p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1.75rem" }}>
+              <div>
+                <h2 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.5rem", color: "var(--text)", margin: 0 }}>
+                  Today&apos;s Tiffin Packing & Dispatch Station 🍱
+                </h2>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", margin: "0.25rem 0 0" }}>
+                  Check off packed meal components and transition orders from cooking to out-for-delivery.
+                </p>
+              </div>
+
+              <div style={{ display: "flex", gap: "0.75rem" }}>
+                {orders.some(o => o.status === "DELIVERED") && (
+                  <button
+                    type="button"
+                    onClick={clearDeliveredOrders}
+                    className="btn btn-ghost"
+                    style={{ fontSize: "0.8125rem" }}
+                  >
+                    Clear Delivered Tiffins
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSimulateTestSubscriber}
+                  className="btn btn-outline"
+                >
+                  <Plus size={15} /> Add Instant Order
+                </button>
+              </div>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-              {orders.map((o) => (
-                <div key={o.id} className="card" style={{ padding: "1.5rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-                    <div>
-                      <strong style={{ fontFamily: "Poppins", fontSize: "1.0625rem", color: "var(--text)" }}>{o.customer}</strong>
-                      <span style={{ fontSize: "0.875rem", color: "var(--text-muted)", marginLeft: "0.75rem" }}>{o.slot}</span>
+            {orders.length === 0 ? (
+              <div className="card" style={{ padding: "3.5rem 2rem", textAlign: "center" }}>
+                <CheckCircle size={48} style={{ color: "var(--secondary)", margin: "0 auto 1rem" }} />
+                <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)", marginBottom: "0.5rem" }}>
+                  All Tiffins Packed & Delivered!
+                </h3>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.9375rem", maxWidth: 420, margin: "0 auto 1.5rem" }}>
+                  There are no pending tiffin deliveries in your queue for right now. Next dispatch cycle will open for tomorrow&apos;s lunch slot.
+                </p>
+                <button onClick={handleSimulateTestSubscriber} className="btn btn-primary">
+                  <Sparkles size={15} /> Generate Test Tiffin Order
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                {orders.map((o) => {
+                  const packed = o.packedItems || {};
+                  return (
+                    <div key={o.id} className="card" style={{ padding: "1.5rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                            <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.125rem", color: "var(--text)", margin: 0 }}>
+                              {o.customer}
+                            </h3>
+                            <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
+                              ({o.plan})
+                            </span>
+                          </div>
+                          <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", margin: "0.25rem 0 0" }}>
+                            Slot: <strong>{o.slot}</strong> • 📍 {o.address}
+                          </p>
+                        </div>
+
+                        <span
+                          className={`badge ${
+                            o.status === "DELIVERED"
+                              ? "badge-success"
+                              : o.status === "OUT_FOR_DELIVERY"
+                              ? "badge-warning"
+                              : o.status === "IN_PREPARATION"
+                              ? "badge-active"
+                              : "badge-primary"
+                          }`}
+                        >
+                          {o.status.replace(/_/g, " ")}
+                        </span>
+                      </div>
+
+                      {/* Items and Packing Checklist */}
+                      <div style={{ background: "var(--surface-alt)", borderRadius: "10px", padding: "1rem", marginBottom: "1.25rem" }}>
+                        <p style={{ fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", color: "var(--text-muted)", margin: "0 0 0.5rem" }}>
+                          Packing Checklist (Tick before handing over):
+                        </p>
+                        <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+                          {[
+                            { key: "sabzi", label: "Sabzi Containers Packed" },
+                            { key: "rotis", label: "Fresh Phulkas / Rotlo (Ghee)" },
+                            { key: "dal", label: "Dal / Kadhi Container" },
+                            { key: "rice", label: "Rice / Khichdi & Salad" },
+                          ].map((chk) => (
+                            <label
+                              key={chk.key}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "0.5rem",
+                                fontSize: "0.8125rem",
+                                fontWeight: 600,
+                                color: packed[chk.key] ? "var(--secondary)" : "var(--text)",
+                                cursor: "pointer",
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={!!packed[chk.key]}
+                                onChange={() => togglePackItem(o.id, chk.key)}
+                                style={{ accentColor: "var(--secondary)", width: 16, height: 16 }}
+                              />
+                              {chk.label}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* State Machine Transition Actions */}
+                      <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
+                        <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-muted)", marginRight: "0.5rem" }}>
+                          Dispatch Stage:
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => updateOrderStatus(o.id, "IN_PREPARATION")}
+                          className={`btn ${o.status === "IN_PREPARATION" ? "btn-primary" : "btn-outline"}`}
+                          style={{ fontSize: "0.8125rem", padding: "0.4rem 0.875rem" }}
+                        >
+                          🔥 1. Cooking in Kitchen
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateOrderStatus(o.id, "OUT_FOR_DELIVERY")}
+                          className={`btn ${o.status === "OUT_FOR_DELIVERY" ? "btn-primary" : "btn-outline"}`}
+                          style={{ fontSize: "0.8125rem", padding: "0.4rem 0.875rem" }}
+                        >
+                          🛵 2. Out for Delivery
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateOrderStatus(o.id, "DELIVERED")}
+                          className={`btn ${o.status === "DELIVERED" ? "btn-secondary" : "btn-outline"}`}
+                          style={{ fontSize: "0.8125rem", padding: "0.4rem 0.875rem" }}
+                        >
+                          ✓ 3. Delivered to Customer
+                        </button>
+                      </div>
                     </div>
-                    <span className="badge badge-active">{o.status}</span>
-                  </div>
-
-                  <div style={{ background: "var(--surface-alt)", borderRadius: "var(--radius-sm)", padding: "0.75rem 1rem", marginBottom: "1rem", fontSize: "0.875rem", color: "var(--text-muted)" }}>
-                    🍱 Items: <strong>{o.items.join(" • ")}</strong>
-                  </div>
-
-                  <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-                    <button
-                      onClick={() => updateOrderStatus(o.id, "IN_PREPARATION")}
-                      className={`btn ${o.status === "IN_PREPARATION" ? "btn-primary" : "btn-outline"}`}
-                      style={{ fontSize: "0.8125rem", padding: "0.4rem 0.875rem" }}
-                    >
-                      Cooking
-                    </button>
-                    <button
-                      onClick={() => updateOrderStatus(o.id, "OUT_FOR_DELIVERY")}
-                      className={`btn ${o.status === "OUT_FOR_DELIVERY" ? "btn-primary" : "btn-outline"}`}
-                      style={{ fontSize: "0.8125rem", padding: "0.4rem 0.875rem" }}
-                    >
-                      Out for Delivery
-                    </button>
-                    <button
-                      onClick={() => updateOrderStatus(o.id, "DELIVERED")}
-                      className={`btn ${o.status === "DELIVERED" ? "btn-secondary" : "btn-outline"}`}
-                      style={{ fontSize: "0.8125rem", padding: "0.4rem 0.875rem" }}
-                    >
-                      ✓ Delivered
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
-        {/* TAB 6: EARNINGS & PAYOUTS */}
+        {/* ------------------------------------------------------------- */}
+        {/* TAB 8: EARNINGS & PAYOUTS */}
+        {/* ------------------------------------------------------------- */}
         {activeTab === "earnings" && (
           <div>
-            <div style={{ marginBottom: "2rem" }}>
-              <h1 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.75rem", color: "var(--text)", marginBottom: "0.25rem" }}>
-                Cook Earnings & Payouts
-              </h1>
-              <p style={{ color: "var(--text-muted)" }}>Weekly direct bank settlements every Monday morning.</p>
+            <div style={{ marginBottom: "1.75rem" }}>
+              <h2 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.5rem", color: "var(--text)", margin: 0 }}>
+                Cook Earnings & Direct Payouts 📈
+              </h2>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", margin: "0.25rem 0 0" }}>
+                Weekly direct bank settlement every Monday morning via IMPS/NEFT.
+              </p>
             </div>
 
+            {/* Payout Metric Cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem", marginBottom: "2rem" }}>
               <div className="card" style={{ padding: "1.5rem" }}>
-                <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>Gross Revenue (Oct 2026)</p>
-                <h3 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.875rem", color: "var(--primary)" }}>₹23,800</h3>
+                <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", margin: 0 }}>Gross Revenue</p>
+                <h3 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.875rem", color: "var(--primary)", margin: "0.35rem 0 0" }}>
+                  ₹{calculatedGrossRevenue.toLocaleString("en-IN")}
+                </h3>
+                <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: "0.25rem 0 0" }}>Based on active subscriptions</p>
               </div>
+
               <div className="card" style={{ padding: "1.5rem" }}>
-                <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>Platform Commission (10%)</p>
-                <h3 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.875rem", color: "var(--danger)" }}>-₹2,380</h3>
+                <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", margin: 0 }}>Platform Commission (10%)</p>
+                <h3 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.875rem", color: "var(--danger)", margin: "0.35rem 0 0" }}>
+                  -₹{commission.toLocaleString("en-IN")}
+                </h3>
+                <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: "0.25rem 0 0" }}>Logistics & customer care fee</p>
               </div>
-              <div className="card" style={{ padding: "1.5rem" }}>
-                <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>Net Bank Deposit</p>
-                <h3 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.875rem", color: "var(--secondary)" }}>₹21,420</h3>
+
+              <div className="card" style={{ padding: "1.5rem", border: "1.5px solid var(--secondary)" }}>
+                <p style={{ fontSize: "0.8125rem", color: "var(--secondary)", fontWeight: 700, margin: 0 }}>Net Bank Deposit</p>
+                <h3 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.875rem", color: "var(--secondary)", margin: "0.35rem 0 0" }}>
+                  ₹{netEarnings.toLocaleString("en-IN")}
+                </h3>
+                <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: "0.25rem 0 0" }}>Settles every Monday 09:00 AM</p>
               </div>
             </div>
 
-            {/* Weekly Earnings Trend Chart */}
+            {/* Weekly Trend Chart */}
             <div className="card" style={{ padding: "1.75rem", marginBottom: "2rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
                 <div>
                   <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.125rem", color: "var(--text)", margin: 0 }}>
-                    Weekly Revenue & Delivery Velocity
+                    Settlement & Revenue Velocity
                   </h3>
-                  <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", margin: "0.25rem 0 0" }}>Daily fulfilled meal subscriptions (Last 7 Days)</p>
+                  <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", margin: "0.25rem 0 0" }}>
+                    Daily subscription delivery credits
+                  </p>
                 </div>
-                <span className="badge badge-success" style={{ fontSize: "0.75rem" }}>+18% vs Last Week</span>
+                <span className="badge badge-success" style={{ fontSize: "0.75rem" }}>✓ 100% on-time settlement</span>
               </div>
               <EarningsChart />
             </div>
 
+            {/* Bank Card */}
             <div className="card" style={{ padding: "1.75rem" }}>
-              <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.125rem", color: "var(--text)", marginBottom: "0.75rem" }}>
-                Registered Bank Account
-              </h3>
-              <p style={{ fontSize: "0.9rem", color: "var(--text)", marginBottom: "0.25rem" }}>
-                State Bank of India • A/C No: <strong>•••• •••• 4892</strong>
-              </p>
-              <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>IFSC: SBIN0001234 • Race Course Branch, Rajkot</p>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 7: PROFILE */}
-        {activeTab === "profile" && (
-          <div>
-            <div style={{ marginBottom: "2rem" }}>
-              <h1 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.75rem", color: "var(--text)", marginBottom: "0.25rem" }}>
-                Kitchen Profile & Operating Area
-              </h1>
-              <p style={{ color: "var(--text-muted)" }}>Manage your address, delivery timings, and certified hygiene credentials.</p>
-            </div>
-
-            <div className="card" style={{ maxWidth: 680, padding: "2rem" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
-                  <label className="label">Kitchen Name</label>
-                  <input type="text" className="input" defaultValue="Meera's Kitchen" />
+                  <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.125rem", color: "var(--text)", margin: "0 0 0.5rem" }}>
+                    Registered Bank Account for Payouts
+                  </h3>
+                  <p style={{ fontSize: "0.95rem", color: "var(--text)", margin: 0 }}>
+                    {profile.bankName} • Account: <strong>{profile.bankAccount}</strong>
+                  </p>
+                  <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", margin: "0.25rem 0 0" }}>
+                    IFSC: {profile.bankIfsc} • Holder: {profile.bankHolder || profile.headCook}
+                  </p>
                 </div>
-                <div>
-                  <label className="label">Head Cook</label>
-                  <input type="text" className="input" defaultValue="Meera Patel" />
-                </div>
+                <button onClick={() => setActiveTab("profile")} className="btn btn-outline" style={{ fontSize: "0.8125rem" }}>
+                  Update Bank Details
+                </button>
               </div>
-
-              <div style={{ marginBottom: "1rem" }}>
-                <label className="label">FSSAI Registration Number</label>
-                <input type="text" className="input" defaultValue="10020042003854" />
-              </div>
-
-              <div style={{ marginBottom: "1.5rem" }}>
-                <label className="label">Service Areas (Within 4 km)</label>
-                <input type="text" className="input" defaultValue="Race Course, Kalavad Road, Mavdi, 150 Feet Ring Road" />
-              </div>
-
-              <button type="button" onClick={() => alert("Profile saved!")} className="btn btn-primary">
-                Save Kitchen Profile
-              </button>
             </div>
           </div>
         )}

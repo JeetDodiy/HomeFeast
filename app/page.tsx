@@ -18,6 +18,7 @@ import {
   Quote,
   Plus,
   Minus,
+  MessageCircle,
 } from "lucide-react";
 import { COOKS, TESTIMONIALS, STATS, FAQS, CUISINES, CITIES } from "@/lib/mockData";
 
@@ -257,10 +258,10 @@ export default function HomePage() {
         style={{
           position: "relative",
           overflow: "hidden",
-          padding: "5rem 0 6rem",
-          minHeight: "90vh",
+          padding: "4rem 0 4.5rem",
           display: "flex",
           alignItems: "center",
+          background: "linear-gradient(180deg, var(--surface-alt) 0%, var(--bg) 100%)",
         }}
       >
         {/* Decorative blobs */}
@@ -346,72 +347,87 @@ export default function HomePage() {
                 <div
                   style={{
                     background: "var(--surface)",
-                    border: "2px solid var(--border)",
-                    borderRadius: "var(--radius)",
-                    padding: "0.5rem",
+                    border: "1.5px solid var(--border)",
+                    borderRadius: "16px",
+                    padding: "0.625rem",
                     display: "flex",
-                    gap: "0.5rem",
+                    gap: "0.75rem",
                     boxShadow: "var(--shadow-lg)",
+                    alignItems: "center",
                     flexWrap: "wrap",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flex: 1, padding: "0 0.5rem" }}>
-                    <MapPin size={18} style={{ color: "var(--primary)" }} />
-                    <select
-                      id="hero-city-select"
-                      value={searchCity}
-                      onChange={(e) => setSearchCity(e.target.value)}
-                      style={{
-                        flex: 1,
-                        border: "none",
-                        background: "transparent",
-                        color: "var(--text)",
-                        fontSize: "1rem",
-                        outline: "none",
-                        cursor: "pointer",
-                        fontFamily: "Inter, sans-serif",
-                      }}
-                      aria-label="Select city"
-                    >
-                      <option value="">All Cities</option>
-                      {CITIES.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", flex: 1, minWidth: "160px", padding: "0.25rem 0.75rem" }}>
+                    <MapPin size={20} style={{ color: "var(--primary)", flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <label htmlFor="hero-city-select" style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0, marginBottom: "2px", display: "block" }}>
+                        Location / City
+                      </label>
+                      <select
+                        id="hero-city-select"
+                        value={searchCity}
+                        onChange={(e) => setSearchCity(e.target.value)}
+                        style={{
+                          width: "100%",
+                          border: "none",
+                          background: "transparent",
+                          color: "var(--text)",
+                          fontSize: "0.9375rem",
+                          fontWeight: 600,
+                          outline: "none",
+                          cursor: "pointer",
+                          fontFamily: "Inter, sans-serif",
+                          padding: 0,
+                        }}
+                        aria-label="Select city"
+                      >
+                        <option value="">All Cities in Gujarat</option>
+                        {CITIES.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <div style={{ width: "1px", background: "var(--border)", alignSelf: "stretch" }} />
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flex: 1, padding: "0 0.5rem" }}>
-                    <ChefHat size={18} style={{ color: "var(--primary)" }} />
-                    <select
-                      id="hero-mealtype-select"
-                      value={searchMealType}
-                      onChange={(e) => setSearchMealType(e.target.value)}
-                      style={{
-                        flex: 1,
-                        border: "none",
-                        background: "transparent",
-                        color: "var(--text)",
-                        fontSize: "1rem",
-                        outline: "none",
-                        cursor: "pointer",
-                        fontFamily: "Inter, sans-serif",
-                      }}
-                      aria-label="Select meal type"
-                    >
-                      <option value="all">All Meals</option>
-                      <option value="veg">Veg Only</option>
-                      <option value="nonveg">Non-Veg</option>
-                      <option value="jain">Jain</option>
-                    </select>
+                  <div style={{ width: "1px", height: "36px", background: "var(--border)" }} className="hide-mobile" />
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", flex: 1, minWidth: "160px", padding: "0.25rem 0.75rem" }}>
+                    <ChefHat size={20} style={{ color: "var(--primary)", flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <label htmlFor="hero-mealtype-select" style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0, marginBottom: "2px", display: "block" }}>
+                        Diet / Meal
+                      </label>
+                      <select
+                        id="hero-mealtype-select"
+                        value={searchMealType}
+                        onChange={(e) => setSearchMealType(e.target.value)}
+                        style={{
+                          width: "100%",
+                          border: "none",
+                          background: "transparent",
+                          color: "var(--text)",
+                          fontSize: "0.9375rem",
+                          fontWeight: 600,
+                          outline: "none",
+                          cursor: "pointer",
+                          fontFamily: "Inter, sans-serif",
+                          padding: 0,
+                        }}
+                        aria-label="Select meal type"
+                      >
+                        <option value="all">All Meals (Veg & Non-Veg)</option>
+                        <option value="veg">Pure Vegetarian Only</option>
+                        <option value="nonveg">Non-Veg Friendly</option>
+                        <option value="jain">Jain Friendly</option>
+                      </select>
+                    </div>
                   </div>
                   <Link
                     href={`/search?city=${searchCity}&type=${searchMealType}`}
                     id="hero-search-btn"
                     className="btn btn-primary"
-                    style={{ borderRadius: "10px", padding: "0.75rem 1.5rem", flexShrink: 0 }}
+                    style={{ padding: "0.875rem 1.75rem", fontSize: "0.95rem", flexShrink: 0 }}
                   >
                     <Search size={18} />
-                    Search Cooks
+                    <span>Search Cooks</span>
                   </Link>
                 </div>
 
@@ -551,22 +567,79 @@ export default function HomePage() {
         `}</style>
       </section>
 
-      {/* ===== STATS BAR ===== */}
-      <section style={{ background: "var(--primary)", padding: "2rem 0" }}>
+      {/* ===== STATS SHOWCASE ===== */}
+      <section style={{ position: "relative", zIndex: 10, marginTop: "-2rem", marginBottom: "2rem" }}>
         <div className="container-custom">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem", textAlign: "center" }}>
-            {STATS.map((stat) => (
-              <div key={stat.label}>
-                <div style={{ fontSize: "1.75rem", marginBottom: "0.25rem" }}>{stat.icon}</div>
-                <div style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.75rem", color: "white" }}>{stat.value}</div>
-                <div style={{ fontSize: "0.875rem", color: "rgba(255,255,255,0.8)" }}>{stat.label}</div>
+          <div
+            style={{
+              background: "var(--surface)",
+              border: "1.5px solid var(--border)",
+              borderRadius: "20px",
+              boxShadow: "var(--shadow-lg)",
+              padding: "1.5rem 2rem",
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: "1.25rem",
+              alignItems: "center",
+            }}
+          >
+            {STATS.map((stat, i) => (
+              <div
+                key={stat.label}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "1rem",
+                  padding: "0.25rem 0.5rem",
+                  borderRight: i < STATS.length - 1 ? "1px solid var(--border)" : "none",
+                }}
+              >
+                <div
+                  style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: "14px",
+                    background: "var(--surface-alt)",
+                    border: "1px solid var(--border)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "1.5rem",
+                    flexShrink: 0,
+                  }}
+                >
+                  {stat.icon}
+                </div>
+                <div>
+                  <div
+                    style={{
+                      fontFamily: "Poppins, sans-serif",
+                      fontWeight: 800,
+                      fontSize: "1.5rem",
+                      color: "var(--text)",
+                      lineHeight: 1.15,
+                    }}
+                  >
+                    {stat.value}
+                  </div>
+                  <div style={{ fontSize: "0.8125rem", color: "var(--text-muted)", fontWeight: 500, marginTop: "0.15rem" }}>
+                    {stat.label}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         </div>
         <style jsx>{`
-          @media (max-width: 640px) {
-            div { grid-template-columns: repeat(2, 1fr) !important; }
+          @media (max-width: 900px) {
+            div[style*="grid-template-columns: repeat(4"] {
+              grid-template-columns: repeat(2, 1fr) !important;
+            }
+          }
+          @media (max-width: 540px) {
+            div[style*="grid-template-columns: repeat(4"] {
+              grid-template-columns: 1fr !important;
+            }
           }
         `}</style>
       </section>
@@ -812,149 +885,148 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ===== BECOME A COOK CTA ===== */}
-      <section
-        className="section"
-        style={{
-          background: "linear-gradient(135deg, var(--primary) 0%, #FF6B00 100%)",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage: "radial-gradient(circle at 70% 50%, rgba(255,255,255,0.1) 0%, transparent 60%)",
-          }}
-          aria-hidden="true"
-        />
-        <div className="container-custom" style={{ position: "relative", textAlign: "center" }}>
+      {/* ===== BECOME A COOK CTA BANNER ===== */}
+      <section className="section" style={{ background: "var(--bg)", paddingTop: "2.5rem", paddingBottom: "2.5rem" }}>
+        <div className="container-custom">
           <div
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              background: "rgba(255,255,255,0.2)",
-              color: "white",
-              padding: "0.375rem 1rem",
-              borderRadius: "var(--radius-pill)",
-              fontSize: "0.8125rem",
-              fontWeight: 600,
-              marginBottom: "1.25rem",
+              background: "linear-gradient(135deg, #1C1917 0%, #2B241F 100%)",
+              borderRadius: "24px",
+              padding: "4rem 2rem",
+              position: "relative",
+              overflow: "hidden",
+              textAlign: "center",
+              boxShadow: "0 20px 45px rgba(28,25,23,0.15)",
+              border: "1px solid rgba(255,255,255,0.08)",
             }}
           >
-            <TrendingUp size={14} /> Cook Partner Program
-          </div>
-          <h2
-            style={{
-              fontFamily: "Poppins",
-              fontSize: "clamp(2rem, 4vw, 3rem)",
-              fontWeight: 800,
-              color: "white",
-              marginBottom: "1rem",
-            }}
-          >
-            Love to Cook? Earn from Home!
-          </h2>
-          <p style={{ color: "rgba(255,255,255,0.9)", fontSize: "1.125rem", maxWidth: 560, margin: "0 auto 2rem" }}>
-            Join 350+ home cooks earning ₹15,000–₹35,000/month. Register, get verified,
-            and start accepting subscriptions from your city.
-          </p>
-          <div style={{ display: "flex", justifyContent: "center", gap: "1rem", flexWrap: "wrap" }}>
-            <Link
-              href="/cook/register"
-              id="become-cook-cta"
+            {/* Ambient orange glow */}
+            <div
               style={{
-                background: "white",
-                color: "var(--primary)",
-                fontFamily: "Poppins",
-                fontWeight: 700,
-                padding: "0.875rem 2rem",
-                borderRadius: "var(--radius-pill)",
-                textDecoration: "none",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                transition: "transform 0.2s, box-shadow 0.2s",
+                position: "absolute",
+                top: "-40%",
+                left: "30%",
+                width: "450px",
+                height: "450px",
+                borderRadius: "50%",
+                background: "rgba(232, 85, 7, 0.25)",
+                filter: "blur(90px)",
+                pointerEvents: "none",
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.2)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
-              }}
-            >
-              <ChefHat size={18} /> Start Cooking for HomeFeast
-            </Link>
-            <Link
-              href="/about"
-              style={{
-                border: "2px solid rgba(255,255,255,0.5)",
-                color: "white",
-                fontFamily: "Poppins",
-                fontWeight: 600,
-                padding: "0.875rem 2rem",
-                borderRadius: "var(--radius-pill)",
-                textDecoration: "none",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(255,255,255,0.15)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
-              }}
-            >
-              <Play size={16} /> Learn More
-            </Link>
+              aria-hidden="true"
+            />
+            <div style={{ position: "relative", zIndex: 1 }}>
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  background: "rgba(255,255,255,0.1)",
+                  color: "#FF9A52",
+                  padding: "0.375rem 1.125rem",
+                  borderRadius: "9999px",
+                  fontSize: "0.8125rem",
+                  fontWeight: 600,
+                  marginBottom: "1.25rem",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                }}
+              >
+                <TrendingUp size={14} /> Cook Partner Program
+              </div>
+              <h2
+                style={{
+                  fontFamily: "Poppins, sans-serif",
+                  fontSize: "clamp(2rem, 4vw, 2.75rem)",
+                  fontWeight: 800,
+                  color: "#FFFFFF",
+                  marginBottom: "1rem",
+                }}
+              >
+                Love to Cook? Earn from Home!
+              </h2>
+              <p style={{ color: "#E7E5E4", fontSize: "1.0625rem", maxWidth: 580, margin: "0 auto 2.25rem", lineHeight: 1.7 }}>
+                Join 350+ certified home cooks across Gujarat earning ₹15,000–₹35,000/month.
+                FSSAI guidance, kitchen hygiene verification, and flexible delivery support included.
+              </p>
+              <div style={{ display: "flex", justifyContent: "center", gap: "1rem", flexWrap: "wrap" }}>
+                <Link
+                  href="/cook/register"
+                  id="become-cook-cta"
+                  className="btn btn-primary"
+                  style={{ padding: "0.875rem 2.25rem", fontSize: "1rem" }}
+                >
+                  <ChefHat size={18} /> Start Cooking for HomeFeast
+                </Link>
+                <Link
+                  href="/about"
+                  className="btn btn-ghost"
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    borderColor: "rgba(255,255,255,0.2)",
+                    color: "#FFFFFF",
+                    padding: "0.875rem 2rem",
+                  }}
+                >
+                  <Play size={16} /> Learn More
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* ===== FAQ ===== */}
-      <section className="section" style={{ background: "var(--bg)" }}>
-        <div className="container-custom" style={{ maxWidth: 760 }}>
+      <section className="section" style={{ background: "var(--surface-alt)", padding: "5rem 0" }}>
+        <div className="container-custom" style={{ maxWidth: 820 }}>
           <div style={{ textAlign: "center", marginBottom: "3rem" }}>
             <div className="section-tag" style={{ display: "inline-flex" }}>🙋 Common Questions</div>
-            <h2 style={{ fontFamily: "Poppins", fontSize: "clamp(1.75rem, 4vw, 2.5rem)", fontWeight: 800, color: "var(--text)" }}>
+            <h2 style={{ fontFamily: "Poppins, sans-serif", fontSize: "clamp(1.75rem, 4vw, 2.5rem)", fontWeight: 800, color: "var(--text)" }}>
               Frequently Asked Questions
             </h2>
+            <p style={{ color: "var(--text-muted)", fontSize: "1rem", marginTop: "0.5rem" }}>
+              Everything you need to know about our home-cooked meal subscriptions.
+            </p>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
             {FAQS.map((faq, i) => (
               <FAQItem key={i} q={faq.q} a={faq.a} index={i} />
             ))}
           </div>
-          <div style={{ textAlign: "center", marginTop: "2rem" }}>
-            <p style={{ color: "var(--text-muted)", marginBottom: "1rem" }}>Still have questions?</p>
-            <Link href="/contact" className="btn btn-outline" id="contact-us-btn">
-              Contact Us <ArrowRight size={16} />
-            </Link>
+          <div
+            style={{
+              marginTop: "3rem",
+              background: "var(--surface)",
+              border: "1.5px solid var(--border)",
+              borderRadius: "16px",
+              padding: "2rem",
+              textAlign: "center",
+              boxShadow: "var(--shadow)",
+            }}
+          >
+            <h3 style={{ fontFamily: "Poppins, sans-serif", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)", marginBottom: "0.5rem" }}>
+              Still have questions or need meal customization?
+            </h3>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.9375rem", marginBottom: "1.5rem" }}>
+              Our friendly customer team is available 7 days a week to help you choose the right meal plan.
+            </p>
+            <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
+              <a
+                href="https://wa.me/919876543210?text=Hello%20HomeFeast%20Support!%20I%20have%20a%20question%20about%20meal%20subscriptions."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-secondary"
+                id="faq-whatsapp-btn"
+                style={{ padding: "0.75rem 1.75rem" }}
+              >
+                <MessageCircle size={18} /> Chat on WhatsApp
+              </a>
+              <Link href="/contact" className="btn btn-outline" id="contact-us-btn" style={{ padding: "0.75rem 1.75rem" }}>
+                Contact Support <ArrowRight size={16} />
+              </Link>
+            </div>
           </div>
         </div>
       </section>
-
-      {/* ===== MOBILE BOTTOM NAV ===== */}
-      <nav className="mobile-nav" aria-label="Mobile navigation">
-        <Link href="/" className="mobile-nav-item active">
-          <ChefHat size={20} /> <span>Home</span>
-        </Link>
-        <Link href="/search" className="mobile-nav-item">
-          <Search size={20} /> <span>Search</span>
-        </Link>
-        <Link href="/auth/login" className="mobile-nav-item">
-          <Smartphone size={20} /> <span>Orders</span>
-        </Link>
-        <Link href="/auth/login" className="mobile-nav-item">
-          <Star size={20} /> <span>Profile</span>
-        </Link>
-      </nav>
     </>
   );
 }

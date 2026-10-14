@@ -14,6 +14,9 @@ import {
   Settings,
   LayoutDashboard,
   Search,
+  UtensilsCrossed,
+  Calendar,
+  DollarSign,
 } from "lucide-react";
 
 const navLinks = [
@@ -30,9 +33,29 @@ export default function Navbar() {
   const [userDropdown, setUserDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Mock auth state - in production this comes from auth context
-  const isLoggedIn = false;
-  const user = { name: "Priya Sharma", role: "customer" };
+  // Authenticated user state from localStorage
+  const [currentUser, setCurrentUser] = useState<{ name: string; role: string; email?: string } | null>(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("hf_user");
+      if (stored) {
+        setCurrentUser(JSON.parse(stored));
+      }
+    } catch {}
+  }, []);
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem("hf_token");
+      localStorage.removeItem("hf_user");
+    } catch {}
+    setCurrentUser(null);
+    window.location.href = "/";
+  };
+
+  const isLoggedIn = !!currentUser;
+  const user = currentUser || { name: "Guest User", role: "customer" };
 
   const [seniorMode, setSeniorMode] = useState(false);
 
@@ -265,19 +288,57 @@ export default function Navbar() {
                 </button>
 
                 {userDropdown && (
-                  <div className="dropdown">
+                  <div className="dropdown" style={{ minWidth: "220px", right: 0 }}>
                     <div style={{ padding: "0.75rem 1rem", borderBottom: "1px solid var(--border)" }}>
-                      <p style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--text)" }}>{user.name}</p>
-                      <p style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Customer</p>
+                      <p style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text)", margin: 0 }}>{user.name}</p>
+                      <p style={{ fontSize: "0.75rem", color: "var(--primary)", fontWeight: 600, margin: "0.25rem 0 0" }}>
+                        {(user.role || "").toLowerCase() === "cook"
+                          ? "👨‍🍳 Verified Home Cook"
+                          : (user.role || "").toLowerCase() === "admin"
+                          ? "🔐 System Administrator"
+                          : "🍱 HomeFeast Customer"}
+                      </p>
                     </div>
-                    <Link href="/customer/dashboard" className="dropdown-item">
-                      <LayoutDashboard size={16} /> Dashboard
-                    </Link>
-                    <Link href="/customer/profile" className="dropdown-item">
-                      <Settings size={16} /> Settings
-                    </Link>
+
+                    {(user.role || "").toLowerCase() === "cook" ? (
+                      <>
+                        <Link href="/cook/dashboard" onClick={() => setUserDropdown(false)} className="dropdown-item">
+                          <LayoutDashboard size={16} /> Cook Dashboard
+                        </Link>
+                        <Link href="/cook/dashboard?tab=menu" onClick={() => setUserDropdown(false)} className="dropdown-item">
+                          <UtensilsCrossed size={16} /> Menu Manager
+                        </Link>
+                        <Link href="/cook/dashboard?tab=weekly" onClick={() => setUserDropdown(false)} className="dropdown-item">
+                          <Calendar size={16} /> Weekly Meal Plan
+                        </Link>
+                        <Link href="/cook/dashboard?tab=plans" onClick={() => setUserDropdown(false)} className="dropdown-item">
+                          <DollarSign size={16} /> Plans & Pricing
+                        </Link>
+                        <Link href="/cook/dashboard?tab=profile" onClick={() => setUserDropdown(false)} className="dropdown-item">
+                          <Settings size={16} /> Kitchen Profile
+                        </Link>
+                      </>
+                    ) : (user.role || "").toLowerCase() === "admin" ? (
+                      <Link href="/admin/dashboard" onClick={() => setUserDropdown(false)} className="dropdown-item">
+                        <LayoutDashboard size={16} /> Admin Console
+                      </Link>
+                    ) : (
+                      <>
+                        <Link href="/customer/dashboard" onClick={() => setUserDropdown(false)} className="dropdown-item">
+                          <LayoutDashboard size={16} /> My Tiffins & Orders
+                        </Link>
+                        <Link href="/customer/profile" onClick={() => setUserDropdown(false)} className="dropdown-item">
+                          <Settings size={16} /> Account Profile
+                        </Link>
+                      </>
+                    )}
+
                     <div className="dropdown-divider" />
-                    <button className="dropdown-item" style={{ width: "100%", color: "var(--danger)" }}>
+                    <button
+                      onClick={handleLogout}
+                      className="dropdown-item"
+                      style={{ width: "100%", color: "var(--danger)", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
+                    >
                       <LogOut size={16} /> Sign Out
                     </button>
                   </div>
@@ -285,11 +346,11 @@ export default function Navbar() {
               </div>
             </>
           ) : (
-            <div style={{ display: "flex", gap: "0.5rem" }} className="hide-mobile">
-              <Link href="/auth/login" className="btn btn-ghost" id="nav-login-btn">
+            <div style={{ display: "flex", gap: "0.625rem", alignItems: "center" }} className="hide-mobile">
+              <Link href="/auth/login" className="btn btn-ghost" id="nav-login-btn" style={{ padding: "0.5rem 1.125rem", minHeight: "40px" }}>
                 Sign In
               </Link>
-              <Link href="/auth/register" className="btn btn-primary" id="nav-register-btn">
+              <Link href="/auth/register" className="btn btn-primary" id="nav-register-btn" style={{ padding: "0.5rem 1.25rem", minHeight: "40px" }}>
                 Get Started
               </Link>
             </div>
@@ -336,14 +397,71 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
-          <div style={{ borderTop: "1px solid var(--border)", paddingTop: "1rem", marginTop: "0.5rem", display: "flex", gap: "0.5rem" }}>
-            <Link href="/auth/login" className="btn btn-ghost" style={{ flex: 1, justifyContent: "center" }} onClick={() => setMenuOpen(false)}>
-              Sign In
-            </Link>
-            <Link href="/auth/register" className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={() => setMenuOpen(false)}>
-              Get Started
-            </Link>
-          </div>
+
+          {isLoggedIn ? (
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: "1rem", marginTop: "0.5rem" }}>
+              <div style={{ padding: "0.5rem 1rem", marginBottom: "0.5rem" }}>
+                <p style={{ fontWeight: 700, color: "var(--text)", margin: 0 }}>{user.name}</p>
+                <p style={{ fontSize: "0.8rem", color: "var(--primary)", fontWeight: 600, margin: "0.125rem 0 0" }}>
+                  {(user.role || "").toLowerCase() === "cook"
+                    ? "👨‍🍳 Verified Home Cook"
+                    : (user.role || "").toLowerCase() === "admin"
+                    ? "🔐 System Administrator"
+                    : "🍱 HomeFeast Customer"}
+                </p>
+              </div>
+
+              {(user.role || "").toLowerCase() === "cook" ? (
+                <>
+                  <Link href="/cook/dashboard" className="dropdown-item" onClick={() => setMenuOpen(false)}>
+                    <LayoutDashboard size={16} /> Cook Dashboard
+                  </Link>
+                  <Link href="/cook/dashboard?tab=menu" className="dropdown-item" onClick={() => setMenuOpen(false)}>
+                    <UtensilsCrossed size={16} /> Menu Manager
+                  </Link>
+                  <Link href="/cook/dashboard?tab=weekly" className="dropdown-item" onClick={() => setMenuOpen(false)}>
+                    <Calendar size={16} /> Weekly Meal Plan
+                  </Link>
+                  <Link href="/cook/dashboard?tab=profile" className="dropdown-item" onClick={() => setMenuOpen(false)}>
+                    <Settings size={16} /> Kitchen Profile
+                  </Link>
+                </>
+              ) : (user.role || "").toLowerCase() === "admin" ? (
+                <Link href="/admin/dashboard" className="dropdown-item" onClick={() => setMenuOpen(false)}>
+                  <LayoutDashboard size={16} /> Admin Console
+                </Link>
+              ) : (
+                <>
+                  <Link href="/customer/dashboard" className="dropdown-item" onClick={() => setMenuOpen(false)}>
+                    <LayoutDashboard size={16} /> My Tiffins
+                  </Link>
+                  <Link href="/customer/profile" className="dropdown-item" onClick={() => setMenuOpen(false)}>
+                    <Settings size={16} /> Profile
+                  </Link>
+                </>
+              )}
+
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  handleLogout();
+                }}
+                className="dropdown-item"
+                style={{ width: "100%", color: "var(--danger)", marginTop: "0.5rem", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
+              >
+                <LogOut size={16} /> Sign Out
+              </button>
+            </div>
+          ) : (
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: "1rem", marginTop: "0.5rem", display: "flex", gap: "0.5rem" }}>
+              <Link href="/auth/login" className="btn btn-ghost" style={{ flex: 1, justifyContent: "center" }} onClick={() => setMenuOpen(false)}>
+                Sign In
+              </Link>
+              <Link href="/auth/register" className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={() => setMenuOpen(false)}>
+                Get Started
+              </Link>
+            </div>
+          )}
         </div>
       )}
 
