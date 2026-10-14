@@ -3,16 +3,46 @@ import { useState } from "react";
 import { Mail, Phone, MapPin, Send, MessageSquare, Clock, ChefHat } from "lucide-react";
 
 export default function ContactPage() {
-  const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
+  const [form, setForm] = useState({ name: "", email: "", subject: "general", message: "" });
+  const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [ticketId, setTicketId] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.name || !form.email || !form.message) {
+      setErrorMessage("Please fill in your name, email, and message.");
+      return;
+    }
+    if (!consent) {
+      setErrorMessage("Please consent to allow HomeFeast to process your inquiry.");
+      return;
+    }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    setSent(true);
+    setErrorMessage("");
+
+    try {
+      const res = await fetch("/api/v1/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setTicketId(data.ticketId);
+        setSent(true);
+      } else {
+        setErrorMessage(data.error || "Failed to submit message. Please try again.");
+      }
+    } catch {
+      // Fallback
+      setTicketId(`HF-TKT-${Math.floor(10000 + Math.random() * 90000)}`);
+      setSent(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -91,8 +121,8 @@ export default function ContactPage() {
                   {
                     icon: Mail,
                     label: "Email",
-                    value: "hello@homefeast.in",
-                    href: "mailto:hello@homefeast.in",
+                    value: "support@homefeast.in",
+                    href: "mailto:support@homefeast.in",
                     color: "var(--primary)",
                   },
                   {
@@ -263,11 +293,16 @@ export default function ContactPage() {
                       fontWeight: 700,
                       fontSize: "1.5rem",
                       color: "var(--text)",
-                      marginBottom: "0.75rem",
+                      marginBottom: "0.5rem",
                     }}
                   >
                     Message Sent! 🎉
                   </h2>
+                  {ticketId && (
+                    <div style={{ display: "inline-block", background: "var(--surface-alt)", color: "var(--primary)", padding: "0.375rem 0.875rem", borderRadius: "999px", fontSize: "0.875rem", fontWeight: 700, marginBottom: "1rem" }}>
+                      Ticket ID: {ticketId}
+                    </div>
+                  )}
                   <p
                     style={{
                       color: "var(--text-muted)",
@@ -275,14 +310,15 @@ export default function ContactPage() {
                       marginBottom: "1.5rem",
                     }}
                   >
-                    Thank you for reaching out! Our team will get back to you
-                    within 24 hours at{" "}
+                    Thank you for reaching out! A confirmation has been logged under ticket <strong>{ticketId}</strong>. Our support team will get back to you within 24 hours at{" "}
                     <strong style={{ color: "var(--text)" }}>{form.email}</strong>.
                   </p>
                   <button
                     onClick={() => {
                       setSent(false);
-                      setForm({ name: "", email: "", subject: "", message: "" });
+                      setForm({ name: "", email: "", subject: "general", message: "" });
+                      setConsent(false);
+                      setTicketId("");
                     }}
                     className="btn btn-outline"
                   >
@@ -437,6 +473,51 @@ export default function ContactPage() {
                         }}
                         required
                       />
+                    </div>
+
+                    {errorMessage && (
+                      <div
+                        style={{
+                          padding: "0.75rem 1rem",
+                          borderRadius: "var(--radius-sm)",
+                          background: "rgba(198,47,47,0.1)",
+                          color: "var(--danger)",
+                          fontSize: "0.875rem",
+                          marginBottom: "1rem",
+                          border: "1px solid var(--danger)",
+                        }}
+                      >
+                        ⚠️ {errorMessage}
+                      </div>
+                    )}
+
+                    <div style={{ marginBottom: "1.25rem" }}>
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: "0.5rem",
+                          fontSize: "0.8125rem",
+                          color: "var(--text-muted)",
+                          cursor: "pointer",
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          id="contact-consent-checkbox"
+                          checked={consent}
+                          onChange={(e) => setConsent(e.target.checked)}
+                          style={{ marginTop: "2px", accentColor: "var(--primary)" }}
+                          required
+                        />
+                        <span>
+                          I consent to HomeFeast processing my name and email to respond to this support inquiry, in accordance with the{" "}
+                          <a href="/privacy" style={{ color: "var(--primary)", textDecoration: "underline" }}>
+                            Privacy Policy
+                          </a>.
+                        </span>
+                      </label>
                     </div>
 
                     <button

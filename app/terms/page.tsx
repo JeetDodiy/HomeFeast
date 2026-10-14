@@ -15,33 +15,29 @@ export default function TermsPage() {
 HomeFeast reserves the right to modify these terms at any time. Continued use after changes constitutes acceptance.`,
     },
     {
-      title: "2. Account Registration",
-      content: `• You must be at least 16 years of age to create an account
-• You must provide accurate, complete, and current information during registration
-• You are responsible for maintaining the confidentiality of your login credentials
-• You are responsible for all activities under your account
-• One person may not maintain more than one account
-• HomeFeast reserves the right to suspend or terminate accounts that violate these terms`,
+      title: "2. Account Registration & Eligibility",
+      content: `• You must be at least 18 years of age to register or place orders on HomeFeast
+• In compliance with India's DPDP Act 2023, parents or legal guardians may manage accounts on behalf of family members
+• You must provide accurate, verifiable contact and delivery details
+• You are solely responsible for maintaining login credential confidentiality and for all activity under your profile
+• Multiple duplicate accounts or fraudulent identity creation is strictly prohibited and subject to immediate termination`,
     },
     {
-      title: "3. Customer Terms",
+      title: "3. Customer Terms & Cutoff Policy",
       content: `**Ordering & Subscriptions:**
-• Orders and subscriptions are subject to cook availability and service area
-• Subscription plans (daily, weekly, monthly) are as described on each cook's profile
-• You may pause (monthly plans: up to 5 days/month), skip individual meals, or cancel your subscription before the cutoff time
-• Cutoff time for next-day orders is 9:00 PM IST the previous day
-• Cancellations after the cutoff time may not be refunded
+• Orders and subscriptions are subject to verified cook availability and delivery radiuses in your selected city
+• Subscription plans (Daily, Weekly, Monthly) are clearly specified with per-meal costs and included menus
+• **The 8:00 PM Cutoff Rule:** Any pause, meal skip, or cancellation for next-day lunch or dinner must be submitted before **8:00 PM IST** on the previous calendar day
+• Cancellations submitted after 8:00 PM cannot be refunded as home cooks purchase fresh daily ingredients based on locked preparation rosters
+• Full details on pro-rata returns and meal replacements are set forth in our [Refund & Cancellation Policy](/refund)
 
-**Payments:**
-• Currently, HomeFeast supports Cash on Delivery and UPI on Delivery
-• Online payment integration (Razorpay/Stripe) will be available in future updates
-• Prices displayed on the platform are inclusive of preparation and delivery charges unless stated otherwise
+**Transparent Pricing & No Hidden Fees:**
+• All prices shown on HomeFeast are 100% transparent: zero surprise delivery markups or mandatory platform gratuities
+• Current payment modes: Cash on Delivery (COD) and UPI on Delivery
 
-**Reviews & Ratings:**
-• You may rate and review a cook after each delivery
-• Reviews must be honest, relevant, and respectful
-• Abusive, defamatory, or fraudulent reviews will be removed
-• HomeFeast reserves the right to moderate all reviews`,
+**Verified Reviews:**
+• Only customers who received and completed a verified delivery may leave a rating and review
+• Defamatory, abusive, or fake reviews are moderated and removed immediately`,
     },
     {
       title: "4. Home Cook / Tiffin Provider Terms",

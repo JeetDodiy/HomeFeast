@@ -59,58 +59,51 @@ We do NOT collect or store any payment card details. All future payments will be
 • **With your consent** — any other sharing requires your explicit permission`,
     },
     {
-      title: "5. Your Rights (DPDP Act 2023)",
-      content: `Under India's Digital Personal Data Protection Act, 2023, you have the right to:
-
-• **Access** your personal data stored on HomeFeast
-• **Correct** inaccurate or incomplete personal data
-• **Delete** your account and all associated personal data
-• **Withdraw consent** for data processing at any time
-• **Data portability** — request a copy of your data in a machine-readable format
-• **Grievance redressal** — raise a complaint with our Data Protection Officer
-
-To exercise any of these rights, email us at **privacy@homefeast.in** or use the "Delete Account" option in your Profile Settings.`,
+      title: "4. Data Minimization Principle",
+      content: `In compliance with the Digital Personal Data Protection (DPDP) Act, 2023, HomeFeast follows strict data minimization:
+• We only request the minimum personal information required to execute your meal subscription (Name, Phone number, Delivery Address).
+• We do not collect biometric data, intrusive device sensors, or background location.
+• You have the right to provide an alternate delivery landmark and may decline optional marketing communications at any time.`,
     },
     {
-      title: "6. Cookies",
-      content: `We use essential cookies for:
+      title: "5. Your Rights (DPDP Act 2023 & GDPR)",
+      content: `Under India's DPDP Act 2023 and global privacy standards, you have the right to:
 
-• **Authentication** — maintaining your logged-in session (HttpOnly, Secure, SameSite=Strict)
-• **Theme preference** — remembering your light/dark mode choice (localStorage)
-• **CSRF protection** — preventing cross-site request forgery attacks
-
-We do NOT use third-party tracking cookies or advertising cookies.`,
+• **Access & Review:** Inspect all personal information held about you.
+• **Correction & Updating:** Update or correct out-of-date information in your dashboard.
+• **Right to Erasure (Data Deletion):** Request permanent deletion of your account and data through the "Delete Account" button in your Customer Dashboard, or by emailing grievance@homefeast.in.
+• **Withdraw Consent:** Revoke consent for processing at any time without penalty.
+• **Grievance Redressal:** Escalate any unresolved data concerns to our appointed Grievance Officer.`,
+    },
+    {
+      title: "6. Cookies & Tracking",
+      content: `We use only essential cookies for authentication and session integrity, plus localized preference storage for theme and accessibility settings. For full details, please review our dedicated [Cookie Policy](/cookies).`,
     },
     {
       title: "7. Data Retention",
-      content: `• **Active accounts** — data is retained as long as your account is active
-• **Deleted accounts** — personal data is deleted within 30 days of account deletion
-• **Order and subscription history** — retained for 3 years for legal and audit purposes
-• **Cook verification documents** — retained as long as the cook partnership is active, deleted 90 days after termination
-• **Server logs** — retained for 90 days for security and debugging`,
+      content: `• **Active accounts:** Data is retained as long as your account remains active.
+• **Deleted accounts:** Personal data is purged within 30 days of account deletion.
+• **Order records:** Retained in encrypted form for 3 years to comply with statutory taxation and commercial laws.
+• **Server logs:** Retained for 90 days strictly for cybersecurity and threat mitigation.`,
     },
     {
-      title: "8. Children's Privacy",
-      content: `HomeFeast is not intended for use by children under the age of 16. We do not knowingly collect personal data from children. If we learn that a child under 16 has provided us with personal information, we will delete it immediately.`,
+      title: "8. Protection of Children's Data (18+ Requirement)",
+      content: `In compliance with Section 9 of the DPDP Act 2023, HomeFeast does not offer services directly to or knowingly process the personal data of children under 18 years of age without verifiable parental/guardian consent. Any accounts discovered to belong to unverified minors will be permanently deleted along with all collected data.`,
     },
     {
       title: "9. Changes to This Policy",
-      content: `We may update this privacy policy from time to time. When we do, we will:
-
-• Update the "Last Updated" date at the top
-• Notify registered users via email for significant changes
-• Post a notice on our website
-
-Continued use of HomeFeast after changes constitutes acceptance of the updated policy.`,
+      content: `We review our privacy practices periodically. Any material modifications will be communicated via your registered email and highlighted through a notice on our homepage.`,
     },
     {
-      title: "10. Contact Us",
-      content: `If you have any questions about this privacy policy, contact us at:
+      title: "10. Grievance Officer & Contact Details",
+      content: `In accordance with the Information Technology Act 2000 and DPDP Act 2023, the details of our Grievance Redressal Officer are:
 
-**Data Protection Officer**
-Email: privacy@homefeast.in
-Phone: +91 98765 43210
-Address: Race Course Road, Rajkot, Gujarat 360001, India`,
+**Mr. Rajesh Vora (Grievance Officer)**
+HomeFeast Technologies Private Limited
+CIN: U72900GJ2026PTC148920
+Registered Address: 302, Silicon Hub, Race Course Road, Rajkot, Gujarat - 360001, India
+Email: grievance@homefeast.in | privacy@homefeast.in
+Phone: +91 98765 43210 (Mon–Fri, 10:00 AM – 6:00 PM IST)`,
     },
   ];
 

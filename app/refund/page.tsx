@@ -3,14 +3,15 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Refund & Cancellation Policy | HomeFeast",
-  description: "HomeFeast Refund & Cancellation Policy — clear, transparent rules on meal cancellations, 8:00 PM cutoff, dispute resolutions, and pro-rata refunds.",
+  description:
+    "HomeFeast Refund & Cancellation Policy — clear, transparent rules on meal cancellations, 8:00 PM cutoff, dispute resolutions, and pro-rata refunds.",
 };
 
 export default function RefundPage() {
   const sections = [
     {
       title: "1. Overview & Fair Refund Commitment",
-      content: `At HomeFeast, we value transparent pricing, mutual respect between home cooks and subscribers, and zero hidden deductions. Because our home cooks purchase fresh groceries and handcraft meals daily according to confirmed orders, our cancellation and refund policies balance customer flexibility with cook sustainability.`,
+      content: `At HomeFeast, we value transparent pricing, mutual respect between home cooks and subscribers, and zero hidden deductions. Because our verified home cooks purchase fresh groceries and handcraft meals daily according to confirmed orders, our cancellation and refund policies balance customer flexibility with cook sustainability.`,
     },
     {
       title: "2. The 8:00 PM Cutoff Rule",

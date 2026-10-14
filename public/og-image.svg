@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFAF3" />
+      <stop offset="100%" stop-color="#FFF1DF" />
+    </linearGradient>
+    <linearGradient id="brand" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#E8650A" />
+      <stop offset="100%" stop-color="#FF8A3D" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <circle cx="1050" cy="120" r="280" fill="#E8650A" opacity="0.06" />
+  <circle cx="150" cy="500" r="220" fill="#2F7D4F" opacity="0.05" />
+
+  <!-- Logo Badge -->
+  <g transform="translate(100, 100)">
+    <rect width="90" height="90" rx="22" fill="#E8650A" />
+    <text x="45" y="62" font-family="Arial, sans-serif" font-size="52" text-anchor="middle" fill="#FFFFFF">🍱</text>
+    <text x="115" y="62" font-family="'Poppins', Arial, sans-serif" font-size="56" font-weight="800" fill="#2B2118">Home<tspan fill="#E8650A">Feast</tspan></text>
+  </g>
+
+  <!-- Headline -->
+  <text x="100" y="270" font-family="'Poppins', Arial, sans-serif" font-size="58" font-weight="800" fill="#2B2118">
+    Maa Ke Haath Ka Khana,
+  </text>
+  <text x="100" y="340" font-family="'Poppins', Arial, sans-serif" font-size="58" font-weight="800" fill="#E8650A">
+    Delivered Every Single Day.
+  </text>
+
+  <!-- Subheadline -->
+  <text x="100" y="420" font-family="'Inter', Arial, sans-serif" font-size="28" fill="#6B5C4D">
+    Fresh, hygienic, home-style daily, weekly &amp; monthly tiffin subscriptions
+  </text>
+  <text x="100" y="465" font-family="'Inter', Arial, sans-serif" font-size="28" fill="#6B5C4D">
+    from verified local home cooks in Rajkot &amp; Ahmedabad.
+  </text>
+
+  <!-- Badges -->
+  <g transform="translate(100, 520)">
+    <rect width="210" height="46" rx="23" fill="#E8F5E9" stroke="#2F7D4F" stroke-width="1.5" />
+    <text x="105" y="30" font-family="'Inter', Arial, sans-serif" font-size="18" font-weight="600" fill="#2F7D4F" text-anchor="middle">✓ FSSAI Verified</text>
+  </g>
+
+  <g transform="translate(330, 520)">
+    <rect width="240" height="46" rx="23" fill="#FFF1DF" stroke="#E8650A" stroke-width="1.5" />
+    <text x="120" y="30" font-family="'Inter', Arial, sans-serif" font-size="18" font-weight="600" fill="#E8650A" text-anchor="middle">★ 4.8 / 5 Rating</text>
+  </g>
+
+  <g transform="translate(590, 520)">
+    <rect width="240" height="46" rx="23" fill="#FFFFFF" stroke="#EADFCF" stroke-width="1.5" />
+    <text x="120" y="30" font-family="'Inter', Arial, sans-serif" font-size="18" font-weight="600" fill="#2B2118" text-anchor="middle">₹ Zero Hidden Fees</text>
+  </g>
+</svg>

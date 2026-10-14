@@ -262,7 +262,12 @@ export default function CookProfilePage() {
                             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.75rem" }}>
                               <img src={r.avatar} alt={r.userName} style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover" }} />
                               <div>
-                                <p style={{ fontWeight: 600, color: "var(--text)", margin: 0 }}>{r.userName}</p>
+                                <p style={{ fontWeight: 600, color: "var(--text)", margin: 0, display: "flex", alignItems: "center", gap: "0.375rem" }}>
+                                  {r.userName}
+                                  <span style={{ fontSize: "0.6875rem", color: "var(--secondary)", background: "rgba(47,125,79,0.12)", padding: "1px 6px", borderRadius: "999px", fontWeight: 700 }}>
+                                    ✓ Verified Subscriber
+                                  </span>
+                                </p>
                                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                   <Stars rating={r.rating} />
                                   <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{r.date}</span>

@@ -8,6 +8,7 @@ export default function RegisterPage() {
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", confirmPassword: "", city: "" });
+  const [ageConsent, setAgeConsent] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const passwordStrength = (pwd: string) => {
@@ -25,7 +26,14 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (form.password !== form.confirmPassword) { alert("Passwords do not match!"); return; }
+    if (!ageConsent) {
+      alert("Please confirm you are 18 years of age or older and accept the Terms & Privacy Policy.");
+      return;
+    }
+    if (form.password !== form.confirmPassword) {
+      alert("Passwords do not match!");
+      return;
+    }
     setLoading(true);
     await new Promise((r) => setTimeout(r, 1200));
     setLoading(false);
@@ -163,6 +171,28 @@ export default function RegisterPage() {
               {form.confirmPassword && form.password !== form.confirmPassword && (
                 <p style={{ color: "var(--danger)", fontSize: "0.8rem", marginTop: "0.25rem" }}>Passwords do not match</p>
               )}
+            </div>
+
+            <div style={{ marginBottom: "1.25rem" }}>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", fontSize: "0.8125rem", color: "var(--text-muted)", cursor: "pointer", lineHeight: 1.5 }}>
+                <input
+                  type="checkbox"
+                  id="register-age-consent"
+                  checked={ageConsent}
+                  onChange={(e) => setAgeConsent(e.target.checked)}
+                  style={{ marginTop: "2px", accentColor: "var(--primary)" }}
+                  required
+                />
+                <span>
+                  I confirm that I am <strong>18 years of age or older</strong>, and I agree to HomeFeast's{" "}
+                  <Link href="/terms" target="_blank" style={{ color: "var(--primary)", textDecoration: "underline", fontWeight: 600 }}>
+                    Terms of Service
+                  </Link> and{" "}
+                  <Link href="/privacy" target="_blank" style={{ color: "var(--primary)", textDecoration: "underline", fontWeight: 600 }}>
+                    Privacy Policy
+                  </Link>.
+                </span>
+              </label>
             </div>
 
             <button id="register-submit-btn" type="submit" className="btn btn-primary" style={{ width: "100%", justifyContent: "center", fontSize: "1rem", padding: "0.875rem" }} disabled={loading}>

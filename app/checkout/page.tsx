@@ -63,8 +63,11 @@ function CheckoutContent() {
   const subtotal = plan.price;
   const discountAmount = appliedCoupon ? appliedCoupon.discount : 0;
   const deliveryFee = 0; // Free home delivery
-  const platformFee = 20;
+  const platformFee = 0; // Transparent ₹0 Platform Fee (No hidden charges)
   const totalAmount = Math.max(0, subtotal - discountAmount + platformFee);
+
+  const [termsAgreed, setTermsAgreed] = useState(false);
+  const [formError, setFormError] = useState("");
 
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,6 +90,11 @@ function CheckoutContent() {
 
   const handleSubmitOrder = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!termsAgreed) {
+      setFormError("Please confirm that you are 18+ years old and accept our Terms, Privacy, and Refund policies.");
+      return;
+    }
+    setFormError("");
     setIsSubmitting(true);
 
     setTimeout(() => {
@@ -538,14 +546,70 @@ function CheckoutContent() {
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.875rem", color: "var(--text-muted)" }}>
                   <span>Platform Fee & Packaging</span>
-                  <span>₹{platformFee}</span>
+                  <span style={{ color: "var(--secondary)", fontWeight: 600 }}>₹0 (Zero Hidden Charges)</span>
                 </div>
               </div>
 
               {/* Total */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
                 <span style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.125rem", color: "var(--text)" }}>Total Payable</span>
                 <span style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.5rem", color: "var(--primary)" }}>₹{totalAmount}</span>
+              </div>
+
+              {formError && (
+                <div
+                  style={{
+                    padding: "0.625rem 0.875rem",
+                    background: "rgba(198,47,47,0.1)",
+                    color: "var(--danger)",
+                    borderRadius: "var(--radius-sm)",
+                    fontSize: "0.8125rem",
+                    marginBottom: "1rem",
+                    border: "1px solid var(--danger)",
+                  }}
+                >
+                  ⚠️ {formError}
+                </div>
+              )}
+
+              {/* Legal & 18+ Age Consent Checkbox */}
+              <div style={{ marginBottom: "1.25rem" }}>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "0.5rem",
+                    fontSize: "0.8125rem",
+                    color: "var(--text-muted)",
+                    cursor: "pointer",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    id="checkout-terms-consent"
+                    checked={termsAgreed}
+                    onChange={(e) => {
+                      setTermsAgreed(e.target.checked);
+                      if (e.target.checked) setFormError("");
+                    }}
+                    style={{ marginTop: "2px", accentColor: "var(--primary)" }}
+                    required
+                  />
+                  <span>
+                    I confirm that I am <strong>18 years of age or older</strong>, and I agree to HomeFeast's{" "}
+                    <a href="/terms" target="_blank" style={{ color: "var(--primary)", textDecoration: "underline", fontWeight: 600 }}>
+                      Terms of Service
+                    </a>,{" "}
+                    <a href="/privacy" target="_blank" style={{ color: "var(--primary)", textDecoration: "underline", fontWeight: 600 }}>
+                      Privacy Policy
+                    </a>, and{" "}
+                    <a href="/refund" target="_blank" style={{ color: "var(--primary)", textDecoration: "underline", fontWeight: 600 }}>
+                      Refund Policy
+                    </a>{" "}
+                    (including the 8:00 PM previous-day cutoff rule).
+                  </span>
+                </label>
               </div>
 
               {/* Submit CTA */}

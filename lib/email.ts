@@ -57,8 +57,14 @@ export function generateOrderConfirmationEmail(params: {
 
         <p style="font-size: 14px; color: #6B5C4D;">Payment method: Cash / UPI on Delivery. Please keep exact change or have your UPI app ready when the meal arrives.</p>
 
-        <div class="footer">
-          <p>© 2026 HomeFeast Technologies. Fresh, hygienic, home-style meals.</p>
+        <div class="footer" style="border-top: 1px solid #EADFCF; margin-top: 24px; padding-top: 16px; font-size: 12px; color: #6B5C4D; text-align: center; line-height: 1.6;">
+          <p style="margin-bottom: 6px;">
+            © 2026 HomeFeast Technologies Private Limited · Fresh, hygienic, home-style meals.<br />
+            Registered Office: 302, Silicon Hub, Race Course Road, Rajkot, Gujarat - 360001, India
+          </p>
+          <p style="margin: 0;">
+            Transactional email for order ${params.orderId}. <a href="https://homefeast.in/customer/dashboard?tab=profile" style="color: #E8650A; text-decoration: underline;">Notification Preferences</a> · <a href="https://homefeast.in/privacy" style="color: #E8650A; text-decoration: underline;">Privacy Policy</a> · <a href="https://homefeast.in/refund" style="color: #E8650A; text-decoration: underline;">Refund Terms</a>
+          </p>
         </div>
       </div>
     </body>
@@ -96,8 +102,14 @@ export function generateSubscriptionStatusEmail(params: {
         <p style="font-size: 18px;"><span class="badge">${params.status}</span></p>
         ${params.reason ? `<p style="background: #FFF1DF; padding: 12px; border-radius: 8px;"><strong>Reason / Note:</strong> ${params.reason}</p>` : ""}
         <p>You can manage your subscription settings and view delivery schedules in your Customer Dashboard.</p>
-        <div class="footer">
-          <p>© 2026 HomeFeast Technologies. Rajkot & Ahmedabad.</p>
+        <div class="footer" style="border-top: 1px solid #EADFCF; margin-top: 24px; padding-top: 16px; font-size: 12px; color: #6B5C4D; text-align: center; line-height: 1.6;">
+          <p style="margin-bottom: 6px;">
+            © 2026 HomeFeast Technologies Private Limited · Rajkot & Ahmedabad, Gujarat, India<br />
+            Registered Office: 302, Silicon Hub, Race Course Road, Rajkot - 360001
+          </p>
+          <p style="margin: 0;">
+            <a href="https://homefeast.in/customer/dashboard?tab=profile" style="color: #E8650A; text-decoration: underline;">Notification Preferences</a> · <a href="https://homefeast.in/privacy" style="color: #E8650A; text-decoration: underline;">Privacy Policy</a> · <a href="https://homefeast.in/refund" style="color: #E8650A; text-decoration: underline;">8 PM Cutoff Policy</a>
+          </p>
         </div>
       </div>
     </body>

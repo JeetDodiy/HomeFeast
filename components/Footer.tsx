@@ -6,27 +6,26 @@ const footerLinks = {
   Company: [
     { label: "About Us", href: "/about" },
     { label: "How It Works", href: "/#how-it-works" },
-    { label: "Careers", href: "/careers" },
-    { label: "Blog", href: "/blog" },
-    { label: "Contact", href: "/contact" },
+    { label: "Our Story", href: "/about#story" },
+    { label: "Contact Us", href: "/contact" },
   ],
   "For Customers": [
-    { label: "Find Cooks", href: "/search" },
+    { label: "Find Nearby Cooks", href: "/search" },
     { label: "Subscription Plans", href: "/#plans" },
-    { label: "Track Order", href: "/customer/dashboard" },
+    { label: "My Orders & Tiffins", href: "/customer/dashboard?tab=orders" },
     { label: "Customer Support", href: "/contact" },
-    { label: "Refer & Earn", href: "/refer" },
+    { label: "Hygiene Standards", href: "/fssai" },
   ],
   "For Home Cooks": [
-    { label: "Partner With Us", href: "/cook/register" },
+    { label: "Join as a Home Cook", href: "/cook/register" },
     { label: "Cook Dashboard", href: "/cook/dashboard" },
-    { label: "Pricing & Earnings", href: "/cook/register#earnings" },
+    { label: "FSSAI Assistance", href: "/fssai" },
     { label: "Cook Support", href: "/contact" },
-    { label: "Success Stories", href: "/stories" },
   ],
   Legal: [
     { label: "Privacy Policy", href: "/privacy" },
     { label: "Terms of Service", href: "/terms" },
+    { label: "Refund & Cancellation", href: "/refund" },
     { label: "Cookie Policy", href: "/cookies" },
     { label: "FSSAI Compliance", href: "/fssai" },
   ],
@@ -101,9 +100,9 @@ export default function Footer() {
             </p>
             {/* Contact */}
             <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
-              <a href="mailto:hello@homefeast.in" style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--text-muted)", fontSize: "0.875rem", textDecoration: "none" }}>
+              <a href="mailto:support@homefeast.in" style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--text-muted)", fontSize: "0.875rem", textDecoration: "none" }}>
                 <Mail size={15} style={{ color: "var(--primary)", flexShrink: 0 }} />
-                hello@homefeast.in
+                support@homefeast.in
               </a>
               <a href="tel:+919876543210" style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--text-muted)", fontSize: "0.875rem", textDecoration: "none" }}>
                 <Phone size={15} style={{ color: "var(--primary)", flexShrink: 0 }} />
@@ -111,7 +110,7 @@ export default function Footer() {
               </a>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--text-muted)", fontSize: "0.875rem" }}>
                 <MapPin size={15} style={{ color: "var(--primary)", flexShrink: 0 }} />
-                Rajkot, Gujarat, India
+                Rajkot & Ahmedabad, Gujarat, India
               </div>
             </div>
             {/* Social */}
@@ -233,20 +232,24 @@ export default function Footer() {
       <div
         style={{
           borderTop: "1px solid var(--border)",
-          padding: "1.25rem 1.5rem",
+          padding: "1.5rem 1.5rem",
           display: "flex",
-          flexWrap: "wrap",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "0.75rem",
+          flexDirection: "column",
+          gap: "0.5rem",
           backgroundColor: "var(--surface-alt)",
+          textAlign: "center",
         }}
       >
-        <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
-          © {new Date().getFullYear()} HomeFeast. All rights reserved. Made with ❤️ in India.
-        </p>
-        <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
-          FSSAI License: 12345678901234 | India DPDP Act 2023 Compliant
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "0.75rem" }}>
+          <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
+            © {new Date().getFullYear()} HomeFeast Technologies Pvt. Ltd. All rights reserved. Made with ❤️ in India.
+          </p>
+          <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
+            FSSAI License: 10020042003854 | DPDP Act 2023 Compliant
+          </p>
+        </div>
+        <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", opacity: 0.85, margin: 0 }}>
+          CIN: U72900GJ2026PTC148920 · Regd. Office: 302, Silicon Hub, Race Course Road, Rajkot, Gujarat - 360001 · Grievance Officer: Mr. Rajesh Vora (grievance@homefeast.in)
         </p>
       </div>
     </footer>
