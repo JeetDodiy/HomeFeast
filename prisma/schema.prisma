@@ -1,0 +1,304 @@
+// HomeFeast Prisma Schema for PostgreSQL
+// Multi-city Homemade Tiffin & Food Service Platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  COOK
+  ADMIN
+}
+
+enum CookStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum MealType {
+  VEG
+  NON_VEG
+  JAIN
+}
+
+enum PlanDuration {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACCEPTED
+  ACTIVE
+  PAUSED
+  CANCELLED
+  COMPLETED
+  REJECTED
+}
+
+enum OrderStatus {
+  PLACED
+  CONFIRMED
+  IN_PREPARATION
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+}
+
+enum PaymentMethod {
+  COD
+  UPI
+  CARD
+  NETBANKING
+}
+
+model City {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  state     String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  cooks     Cook[]
+
+  @@map("cities")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  phone        String    @unique
+  passwordHash String
+  role         Role      @default(CUSTOMER)
+  cityId       String?
+  city         City?     @relation(fields: [cityId], references: [id])
+  address      String?
+  pincode      String?
+  avatar       String?
+  isVerified   Boolean   @default(false)
+  isBlocked    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  cookProfile   Cook?
+  subscriptions Subscription[]
+  orders        Order[]
+  reviews       Review[]
+  complaints    Complaint[]
+  notifications Notification[]
+
+  @@index([cityId])
+  @@index([role])
+  @@map("users")
+}
+
+model Cook {
+  id            String     @id @default(cuid())
+  userId        String     @unique
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kitchenName   String
+  bio           String
+  photos        String[]   @default([])
+  coverImage    String?
+  fssaiNo       String?
+  cityId        String
+  city          City       @relation(fields: [cityId], references: [id])
+  area          String
+  pincode       String
+  serviceAreas  String[]   @default([])
+  deliverySlots String[]   @default([])
+  isVeg         Boolean    @default(true)
+  status        CookStatus @default(PENDING)
+  ratingAvg     Float      @default(5.0)
+  totalReviews  Int        @default(0)
+  totalOrders   Int        @default(0)
+  responseTime  String     @default("Under 30 min")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  cuisines      CookCuisine[]
+  menuItems     MenuItem[]
+  plans         Plan[]
+  subscriptions Subscription[]
+  orders        Order[]
+  reviews       Review[]
+
+  @@index([cityId, status])
+  @@index([status])
+  @@map("cooks")
+}
+
+model Cuisine {
+  id        String        @id @default(cuid())
+  name      String        @unique
+  emoji     String?
+  cooks     CookCuisine[]
+  menuItems MenuItem[]
+
+  @@map("cuisines")
+}
+
+model CookCuisine {
+  cookId    String
+  cuisineId String
+  cook      Cook    @relation(fields: [cookId], references: [id], onDelete: Cascade)
+  cuisine   Cuisine @relation(fields: [cuisineId], references: [id], onDelete: Cascade)
+
+  @@id([cookId, cuisineId])
+  @@map("cook_cuisines")
+}
+
+model MenuItem {
+  id           String   @id @default(cuid())
+  cookId       String
+  cook         Cook     @relation(fields: [cookId], references: [id], onDelete: Cascade)
+  cuisineId    String?
+  cuisine      Cuisine? @relation(fields: [cuisineId], references: [id])
+  dishName     String
+  mealType     MealType @default(VEG)
+  price        Float
+  availability Boolean  @default(true)
+  deliveryTime String?
+  image        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([cookId, availability])
+  @@map("menu_items")
+}
+
+model Plan {
+  id            String         @id @default(cuid())
+  cookId        String
+  cook          Cook           @relation(fields: [cookId], references: [id], onDelete: Cascade)
+  name          String
+  type          PlanDuration   @default(WEEKLY)
+  price         Float
+  perMeal       Float
+  description   String
+  includes      String[]       @default([])
+  popular       Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  subscriptions Subscription[]
+
+  @@index([cookId])
+  @@map("plans")
+}
+
+model Subscription {
+  id             String             @id @default(cuid())
+  userId         String
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cookId         String
+  cook           Cook               @relation(fields: [cookId], references: [id], onDelete: Cascade)
+  planId         String
+  plan           Plan               @relation(fields: [planId], references: [id])
+  startDate      DateTime
+  endDate        DateTime
+  status         SubscriptionStatus @default(PENDING)
+  deliverySlot   String
+  deliveryDays   String             @default("all-7-days")
+  deliveryAddress String
+  pausedDates    DateTime[]         @default([])
+  specialNotes   String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  orders         Order[]
+
+  @@index([userId, status])
+  @@index([cookId, status])
+  @@map("subscriptions")
+}
+
+model Order {
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cookId          String
+  cook            Cook          @relation(fields: [cookId], references: [id], onDelete: Cascade)
+  subscriptionId  String?
+  subscription    Subscription? @relation(fields: [subscriptionId], references: [id])
+  items           String[]      @default([])
+  totalAmount     Float
+  paymentMethod   PaymentMethod @default(COD)
+  deliveryDate    DateTime
+  slot            String
+  status          OrderStatus   @default(PLACED)
+  deliveryAddress String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  review          Review?
+  complaints      Complaint[]
+
+  @@index([userId])
+  @@index([cookId, deliveryDate])
+  @@map("orders")
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  orderId   String?  @unique
+  order     Order?   @relation(fields: [orderId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cookId    String
+  cook      Cook     @relation(fields: [cookId], references: [id], onDelete: Cascade)
+  rating    Int
+  comment   String
+  createdAt DateTime @default(now())
+
+  @@index([cookId])
+  @@map("reviews")
+}
+
+model Complaint {
+  id        String          @id @default(cuid())
+  orderId   String?
+  order     Order?          @relation(fields: [orderId], references: [id])
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject   String
+  details   String
+  status    ComplaintStatus @default(OPEN)
+  adminNote String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("complaints")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}

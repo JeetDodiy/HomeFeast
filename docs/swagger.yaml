@@ -1,0 +1,106 @@
+openapi: 3.0.3
+info:
+  title: HomeFeast REST API
+  description: Official OpenAPI 3.0 specification for HomeFeast Homemade Tiffin & Food Service Platform
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development server
+paths:
+  /cities:
+    get:
+      summary: Get all supported cities
+      responses:
+        '200':
+          description: List of operating cities
+  /cooks:
+    get:
+      summary: List and search verified home cooks
+      parameters:
+        - name: city
+          in: query
+          schema:
+            type: string
+        - name: mealType
+          in: query
+          schema:
+            type: string
+            enum: [veg, nonveg, jain]
+        - name: cuisine
+          in: query
+          schema:
+            type: string
+        - name: q
+          in: query
+          description: Search term for kitchen or cook name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Array of verified home cooks
+    post:
+      summary: Submit new cook partner application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kitchenName, name, city, phone]
+              properties:
+                kitchenName:
+                  type: string
+                name:
+                  type: string
+                city:
+                  type: string
+                phone:
+                  type: string
+                fssaiNo:
+                  type: string
+      responses:
+        '201':
+          description: Application submitted
+  /orders:
+    get:
+      summary: Get orders list
+      responses:
+        '200':
+          description: List of orders
+    post:
+      summary: Place a new subscription order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cookId, planId, fullName, phone, deliverySlot]
+              properties:
+                cookId:
+                  type: string
+                planId:
+                  type: string
+                fullName:
+                  type: string
+                phone:
+                  type: string
+                deliverySlot:
+                  type: string
+                paymentMethod:
+                  type: string
+                  enum: [COD, UPI, CARD]
+      responses:
+        '201':
+          description: Order placed successfully
+  /subscriptions:
+    get:
+      summary: Get user meal subscriptions
+      responses:
+        '200':
+          description: Subscriptions list
+    post:
+      summary: Create new subscription
+      responses:
+        '201':
+          description: Subscription created

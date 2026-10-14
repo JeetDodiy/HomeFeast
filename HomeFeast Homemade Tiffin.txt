@@ -1,0 +1,138 @@
+HomeFeast – Homemade Tiffin & Food Service Platform
+Detailed guide and project requirements for the HomeFeast – Homemade Tiffin & Food Service Platform analysis.
+
+Context:
+HomeFeast is a web-based platform that connects users (students, working professionals, elderly people) with verified home cooks and tiffin service providers offering fresh, hygienic, home-style meals on a daily, weekly, or monthly subscription basis. The platform digitizes ordering, subscription management, and service coordination.
+
+Unified Mentor
+Home Food
+Problem Statement
+Many people living away from home struggle to find healthy, affordable, and hygienichomemade food. Current food delivery apps focus mainly on restaurants, leading to:
+
+• High cost of meals
+• Unhealthy or repetitive food
+• No long-term meal subscription options
+• Limited visibility of local home cooks
+• Manual coordination via calls or WhatsApp
+Primary Objectives
+• Digitize homemade tiffin and food service management
+• Enable easy discovery of local home cooks
+• Provide flexible meal subscriptions
+• Improve food access for students and professionals
+Secondary Objectives
+• Support small home-based food businesses
+• Improve transparency in menus and pricing
+• Enable scalable expansion across cities
+Scope of Work
+In-Scope
+• Web-based platform (responsive design)
+• Tiffin & homemade food listings
+• Subscription and order management
+• Menu, pricing, and availability display
+Out of Scope
+• Native mobile applications
+• Advanced AI-based meal recommendations
+• Cloud kitchen integrations
+Functional Requirements
+User (Customer) Features
+• User registration & login
+• Browse nearby tiffin providers
+• Search & filter by:
+o Meal type (Veg / Non-Veg)
+o Price
+o Meal plan (daily/weekly/monthly)
+o Cuisine
+• View cook profile, menu, and ratings
+• Subscribe or place order
+• Track subscription & order history
+Home Cook / Tiffin Provider Features
+• Dashboard to manage profile
+• Add/edit menu items
+• Set pricing and meal plans
+• Define service area and delivery timings
+• Accept or reject subscription requests
+• View orders and earnings
+Admin Feature
+• Manage users and cooks
+• Approve cook registrations
+• Monitor orders and subscriptions
+• Manage categories and cuisines
+• Handle complaints and disputes
+Non-Functional Requirements
+• Performance:
+- Page load under 3 seconds
+• Security:
+- Secure login, encrypted user data
+• Usability:
+- Simple, clean, mobile-first UI
+• Scalability:
+- Supports multi-city onboarding
+Technology Stack (Suggested)
+Frontend
+• HTML5, CSS3, JavaScript
+• React.js / Next.js
+• Bootstrap / Tailwind CSS
+Backend
+• Node.js with Express.js
+APIs
+• REST APIs for orders, subscriptions, notifications
+Database
+• MongoDB / PostgreSQL
+Deployment
+• AWS / Vercel / Netlify
+User Flow (High-Level)
+• User visits website
+• Registers / logs in
+• Searches for tiffin providers
+• Applies filters and views menu
+• Selects meal plan
+• Places order / subscription
+• Cook accepts request
+• User receives confirmation
+Data Requirements
+Core Entities
+• Users
+• Home Cooks
+• Menus
+• Orders
+• Orders
+• Subscriptions
+• Reviews
+Sample Business Data
+• Dish Name
+• Meal Type
+• Price
+• Availability
+• Delivery Time
+Key Performance Indicators (KPIs)
+• Number of registered users
+• Active subscriptions
+• Order conversion rate
+• Cook onboarding rate
+• Monthly active users
+• Customer retention rate
+Assumptions & Constraints
+Assumptions
+• Home cooks provide hygienic food
+• Users prefer subscription-based meals
+• Admin approval ensures quality control
+Constraints
+• Fixed development timeline
+• Limited budget
+• Web platform only (Phase 1)
+Deliverables
+• Functional web application
+• Admin dashboard
+• PRD & technical documentation
+• Deployment-ready build
+Expected Impact
+• Affordable access to homemade food
+• Support for local home cooks
+• Reduced dependency on restaurant food
+• Healthier eating habits
+Future Enhancements
+• Online payments & wallet
+• Mobile application
+• Meal customization
+• Nutrition & calorie tracking
+• AI-based meal recommendations

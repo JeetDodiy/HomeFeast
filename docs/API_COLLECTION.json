@@ -1,0 +1,84 @@
+{
+  "info": {
+    "name": "HomeFeast REST APIs",
+    "description": "Complete Postman API Collection for HomeFeast Tiffin & Food Service Platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Cities",
+      "item": [
+        {
+          "name": "Get Active Cities",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/cities"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cooks",
+      "item": [
+        {
+          "name": "List Cooks (with filters)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/cooks?city=rajkot&type=veg&cuisine=gujarati",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "cooks"],
+              "query": [
+                { "key": "city", "value": "rajkot" },
+                { "key": "type", "value": "veg" },
+                { "key": "cuisine", "value": "gujarati" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Submit Cook Application",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kitchenName\": \"Radha's Kitchen\",\n  \"name\": \"Radha Dave\",\n  \"city\": \"Rajkot\",\n  \"phone\": \"9876543211\",\n  \"fssaiNo\": \"10020042009999\"\n}"
+            },
+            "url": "{{baseUrl}}/api/cooks"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Orders & Subscriptions",
+      "item": [
+        {
+          "name": "Get Orders List",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/orders"
+          }
+        },
+        {
+          "name": "Place Order / Subscription",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cookId\": \"c1\",\n  \"planId\": \"p2\",\n  \"fullName\": \"Arjun Verma\",\n  \"phone\": \"9876543210\",\n  \"deliverySlot\": \"Lunch (12–1 PM)\",\n  \"paymentMethod\": \"COD\"\n}"
+            },
+            "url": "{{baseUrl}}/api/orders"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    }
+  ]
+}

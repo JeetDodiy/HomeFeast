@@ -1,0 +1,16 @@
+{
+  "name": "HomeFeast – Homemade Tiffin & Food Service",
+  "short_name": "HomeFeast",
+  "description": "Connect with verified home cooks offering fresh, hygienic, home-style meals on daily, weekly, or monthly subscriptions.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFAF3",
+  "theme_color": "#E8650A",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}
