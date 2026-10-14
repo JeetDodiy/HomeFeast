@@ -1,14 +1,16 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Eye, EyeOff, ChefHat, Mail, Lock, User, ArrowRight } from "lucide-react";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({ email: "demo@cook.com", password: "password123" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState<"customer" | "cook" | "admin">("customer");
+  const [activeTab, setActiveTab] = useState<"customer" | "cook" | "admin">("cook");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,11 +20,55 @@ export default function LoginPage() {
     }
     setLoading(true);
     setError("");
-    // Simulate API call
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    // In production: call /api/v1/auth/login
-    alert("Login successful! (Demo mode - backend integration needed)");
+
+    try {
+      const res = await fetch("/api/v1/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "login",
+          email: form.email,
+          password: form.password,
+          role: activeTab.toUpperCase(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("hf_token", data.token || "hf_session_token");
+          localStorage.setItem("hf_user", JSON.stringify(data.user || { email: form.email, role: activeTab }));
+        }
+
+        // Navigate directly to the corresponding authenticated dashboard
+        if (activeTab === "cook") {
+          router.push("/cook/dashboard");
+        } else if (activeTab === "admin") {
+          router.push("/admin/dashboard");
+        } else {
+          router.push("/customer/dashboard");
+        }
+      } else {
+        setError(data.error || "Authentication failed. Please check your credentials.");
+      }
+    } catch {
+      setError("Network error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSelectRole = (role: "customer" | "cook" | "admin") => {
+    setActiveTab(role);
+    setError("");
+    if (role === "customer") {
+      setForm({ email: "demo@customer.com", password: "demo123" });
+    } else if (role === "cook") {
+      setForm({ email: "demo@cook.com", password: "demo123" });
+    } else if (role === "admin") {
+      setForm({ email: "admin@homefeast.in", password: "admin123" });
+    }
   };
 
   return (
@@ -70,7 +116,7 @@ export default function LoginPage() {
               role="tab"
               aria-selected={activeTab === role}
               id={`login-tab-${role}`}
-              onClick={() => setActiveTab(role)}
+              onClick={() => handleSelectRole(role)}
               style={{
                 flex: 1,
                 padding: "0.625rem",
@@ -195,17 +241,79 @@ export default function LoginPage() {
           <div
             style={{
               marginTop: "1.5rem",
-              padding: "0.875rem",
+              padding: "1rem",
               background: "var(--surface-alt)",
               borderRadius: "var(--radius-sm)",
-              fontSize: "0.8rem",
+              fontSize: "0.8125rem",
               color: "var(--text-muted)",
+              border: "1px solid var(--border)",
             }}
           >
-            <p style={{ fontWeight: 700, marginBottom: "0.375rem", color: "var(--text)" }}>Demo Credentials</p>
-            <p>Customer: demo@customer.com / demo123</p>
-            <p>Cook: demo@cook.com / demo123</p>
-            <p>Admin: admin@homefeast.in / admin123</p>
+            <p style={{ fontWeight: 700, marginBottom: "0.5rem", color: "var(--text)" }}>
+              ⚡ Quick Fill Demo Logins (Click to autofill):
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+              <button
+                type="button"
+                onClick={() => handleSelectRole("customer")}
+                style={{
+                  textAlign: "left",
+                  background: activeTab === "customer" ? "var(--primary-subtle, rgba(232,101,10,0.1))" : "var(--surface)",
+                  border: activeTab === "customer" ? "1px solid var(--primary)" : "1px solid var(--border)",
+                  padding: "0.5rem 0.75rem",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "0.8rem",
+                  color: "var(--text)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <span><strong>🧑 Customer:</strong> demo@customer.com</span>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>password: demo123</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectRole("cook")}
+                style={{
+                  textAlign: "left",
+                  background: activeTab === "cook" ? "var(--primary-subtle, rgba(232,101,10,0.1))" : "var(--surface)",
+                  border: activeTab === "cook" ? "1px solid var(--primary)" : "1px solid var(--border)",
+                  padding: "0.5rem 0.75rem",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "0.8rem",
+                  color: "var(--text)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <span><strong>👨‍🍳 Cook:</strong> demo@cook.com</span>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>password: demo123</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectRole("admin")}
+                style={{
+                  textAlign: "left",
+                  background: activeTab === "admin" ? "var(--primary-subtle, rgba(232,101,10,0.1))" : "var(--surface)",
+                  border: activeTab === "admin" ? "1px solid var(--primary)" : "1px solid var(--border)",
+                  padding: "0.5rem 0.75rem",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "0.8rem",
+                  color: "var(--text)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <span><strong>🔐 Admin:</strong> admin@homefeast.in</span>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>password: admin123</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

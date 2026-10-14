@@ -26,14 +26,21 @@ export async function POST(request: Request) {
     }
 
     // Default: login
+    const userName =
+      role === "COOK"
+        ? "Meenaben Patel"
+        : role === "ADMIN"
+        ? "System Administrator"
+        : "Priya Sharma";
+
     return NextResponse.json({
       success: true,
       message: "Login successful",
       token: `hf_jwt_${Date.now()}_${Math.random().toString(36).substring(7)}`,
       user: {
-        id: "usr_mock_1",
+        id: `usr_${(role || "customer").toLowerCase()}_1`,
         email: email || "demo@homefeast.in",
-        name: "Priya Sharma",
+        name: userName,
         role: role || "CUSTOMER",
       },
     });
