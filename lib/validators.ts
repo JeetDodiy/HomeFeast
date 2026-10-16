@@ -2,13 +2,15 @@ import { z } from "zod";
 
 // User Registration & Auth
 export const RegisterSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  phone: z.string().min(10, "Phone number must be at least 10 digits"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  role: z.enum(["CUSTOMER", "COOK", "ADMIN"]).default("CUSTOMER"),
-  cityId: z.string().min(1, "City is required"),
-  address: z.string().min(5, "Address must be at least 5 characters"),
+  name: z.string().trim().min(2, "Name must be at least 2 characters").max(100, "Name cannot exceed 100 characters"),
+  email: z.string().trim().toLowerCase().email("Invalid email address"),
+  phone: z.string().trim().regex(/^[6-9]\d{9}$/, "Must be a valid 10-digit Indian mobile number starting with 6-9"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  role: z.enum(["CUSTOMER", "COOK"]).default("CUSTOMER"),
+  cityId: z.string().optional(),
+  city: z.string().optional(),
+  address: z.string().optional(),
+  ageConsent: z.boolean().optional(),
 });
 
 export const LoginSchema = z.object({

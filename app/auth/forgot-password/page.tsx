@@ -12,9 +12,18 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     if (!email) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    setSubmitted(true);
+    try {
+      await fetch("/api/v1/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "forgot-password", email }),
+      });
+    } catch {
+      // Ignore network errors gracefully and show confirmation
+    } finally {
+      setLoading(false);
+      setSubmitted(true);
+    }
   };
 
   return (

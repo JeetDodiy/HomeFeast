@@ -5,9 +5,24 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, email, subject, message } = body;
 
-    if (!name || !email || !message) {
+    if (!name || !name.trim()) {
       return NextResponse.json(
-        { success: false, error: "Name, email, and message are required" },
+        { success: false, error: "Name is required" },
+        { status: 400 }
+      );
+    }
+
+    const cleanEmail = (email || "").trim().toLowerCase();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return NextResponse.json(
+        { success: false, error: "A valid email address is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!message || message.trim().length < 10) {
+      return NextResponse.json(
+        { success: false, error: "Message must be at least 10 characters long" },
         { status: 400 }
       );
     }

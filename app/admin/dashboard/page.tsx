@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   LayoutDashboard, Users, ChefHat, ShoppingBag, MessageSquare,
@@ -52,6 +52,28 @@ export default function AdminDashboardPage() {
   const [complaints, setComplaints] = useState(INITIAL_COMPLAINTS);
   const [approving, setApproving] = useState<string | null>(null);
 
+  const [mounted, setMounted] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    if (typeof window !== "undefined") {
+      try {
+        const u = localStorage.getItem("hf_user");
+        if (u) {
+          const parsed = JSON.parse(u);
+          if ((parsed.role || "").toLowerCase() === "admin") {
+            setIsAdmin(true);
+          }
+        }
+      } catch (err) {
+        console.error("Auth check failed:", err);
+      }
+      setAuthChecked(true);
+    }
+  }, []);
+
   const handleApproveCook = (id: string) => {
     setApproving(id);
     setTimeout(() => {
@@ -69,6 +91,31 @@ export default function AdminDashboardPage() {
       prev.map((c) => (c.id === id ? { ...c, status: "resolved" } : c))
     );
   };
+
+  if (mounted && authChecked && !isAdmin) {
+    return (
+      <div style={{ minHeight: "85vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem 1rem", background: "var(--bg)" }}>
+        <div className="card" style={{ maxWidth: 520, width: "100%", padding: "2.5rem", textAlign: "center", border: "1.5px solid var(--border)" }}>
+          <div style={{ width: 68, height: 68, borderRadius: "50%", background: "rgba(220, 38, 38, 0.12)", color: "var(--danger)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.25rem" }}>
+            <Shield size={36} />
+          </div>
+          <h2 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.6rem", color: "var(--text)", marginBottom: "0.5rem" }}>
+            Admin Access Required
+          </h2>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.9375rem", lineHeight: 1.6, marginBottom: "1.75rem" }}>
+            This administrative dashboard is restricted to authorized platform administrators. Please sign in with an administrator account to continue.
+          </p>
+          <Link
+            href="/auth/login"
+            className="btn btn-primary"
+            style={{ width: "100%", justifyContent: "center", padding: "0.875rem", fontSize: "1rem" }}
+          >
+            Sign In as Administrator
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg)" }}>

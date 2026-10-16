@@ -1,5 +1,5 @@
 "use client";
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -27,8 +27,8 @@ function CheckoutContent() {
   const cookId = searchParams.get("cook") || "c1";
   const planId = searchParams.get("plan") || "p2";
 
-  const cook = COOKS.find((c) => c.id === cookId) || COOKS[0];
-  const plan = cook.plans.find((p) => p.id === planId) || cook.plans[0];
+  const [cook, setCook] = useState<any>(() => COOKS.find((c) => c.id === cookId) || COOKS[0]);
+  const [plan, setPlan] = useState<any>(() => cook?.plans?.find((p: any) => p.id === planId) || cook?.plans?.[0]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -37,15 +37,49 @@ function CheckoutContent() {
     email: "priya.sharma@example.com",
     address: "Flat 402, Royal Residency, Opp. Reliance Mall",
     area: "Race Course",
-    city: cook.city || "Rajkot",
+    city: cook?.city || "Rajkot",
     pincode: "360001",
     landmark: "Near Reliance Mall",
     mealSlot: "Lunch (12:00 PM – 1:30 PM)",
     deliveryDays: "all-7-days",
-    startDate: "2026-10-15",
+    startDate: "2026-10-16",
     dietaryNotes: "Less spicy, less oil please.",
     paymentMethod: "cod",
   });
+
+  // Load custom cook if registered, and prefill logged in user
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      let resolvedCook = COOKS.find((c) => c.id === cookId);
+      if (!resolvedCook) {
+        try {
+          const registered = JSON.parse(localStorage.getItem("hf_registered_cooks") || "[]");
+          resolvedCook = registered.find((c: any) => c.id === cookId || c.kitchenName?.toLowerCase() === cookId.toLowerCase());
+        } catch {}
+      }
+      if (resolvedCook) {
+        setCook(resolvedCook);
+        const resolvedPlan = resolvedCook.plans?.find((p: any) => p.id === planId) || resolvedCook.plans?.[0];
+        if (resolvedPlan) setPlan(resolvedPlan);
+      }
+
+      try {
+        const u = localStorage.getItem("hf_user");
+        if (u) {
+          const userObj = JSON.parse(u);
+          if (userObj.name) {
+            setFormData((prev) => ({
+              ...prev,
+              fullName: userObj.name,
+              email: userObj.email || prev.email,
+              phone: userObj.phone || prev.phone,
+              city: userObj.city || prev.city,
+            }));
+          }
+        }
+      } catch {}
+    }
+  }, [cookId, planId]);
 
   // Coupon state
   const [couponInput, setCouponInput] = useState("");
@@ -88,22 +122,155 @@ function CheckoutContent() {
     }
   };
 
-  const handleSubmitOrder = (e: React.FormEvent) => {
+  const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.fullName.trim()) {
+      setFormError("Please enter your full name.");
+      return;
+    }
+    const cleanPhone = formData.phone.replace(/[\s\-\+]/g, "").slice(-10);
+    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+      setFormError("Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.");
+      return;
+    }
+    if (!formData.address.trim()) {
+      setFormError("Please enter your delivery street address.");
+      return;
+    }
+    if (!/^\d{6}$/.test(formData.pincode.trim())) {
+      setFormError("Please enter a valid 6-digit Indian PIN code (e.g. 360001).");
+      return;
+    }
     if (!termsAgreed) {
       setFormError("Please confirm that you are 18+ years old and accept our Terms, Privacy, and Refund policies.");
       return;
     }
+
     setFormError("");
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const generatedId = `HF-${Math.floor(100000 + Math.random() * 900000)}`;
-      setConfirmedOrderId(generatedId);
-      setIsSubmitting(false);
-      setOrderConfirmed(true);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }, 1200);
+    const generatedId = `HF-${Math.floor(100000 + Math.random() * 900000)}`;
+    const planTypeLower = (plan.type || "").toLowerCase();
+    const durationDays = planTypeLower === "monthly" ? 30 : planTypeLower === "weekly" ? 7 : 1;
+    const startDateStr = formData.startDate || new Date().toISOString().split("T")[0];
+    const endDateStr = new Date(new Date(startDateStr).getTime() + (durationDays - 1) * 86400000).toISOString().split("T")[0];
+
+    let currentUserId = "usr_customer_1";
+    if (typeof window !== "undefined") {
+      try {
+        const u = JSON.parse(localStorage.getItem("hf_user") || "{}");
+        if (u.id) currentUserId = u.id;
+      } catch {}
+    }
+
+    try {
+      await fetch("/api/v1/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: generatedId,
+          userId: currentUserId,
+          customerId: currentUserId,
+          customerName: formData.fullName,
+          cookId: cook.id,
+          cookName: cook.kitchenName,
+          planId: plan.id,
+          planName: `${plan.label} (${plan.type})`,
+          deliveryAddress: `${formData.address}, ${formData.area}, ${formData.city} - ${formData.pincode}`,
+          phone: cleanPhone,
+          totalAmount,
+          mealSlot: formData.mealSlot,
+          status: "CONFIRMED",
+          durationDays,
+          remainingMeals: durationDays,
+          totalMeals: durationDays,
+          startDate: startDateStr,
+          endDate: endDateStr,
+          createSubscription: true,
+        }),
+      });
+    } catch (err) {
+      console.warn("Order API sync failed:", err);
+    }
+
+    // Sync to localStorage for cook dashboard & customer dashboard
+    if (typeof window !== "undefined") {
+      try {
+        // Cook Orders
+        const existingCookOrders = JSON.parse(localStorage.getItem("hf_cook_orders") || "[]");
+        const newCookOrder = {
+          id: generatedId,
+          cookId: cook.id,
+          customer: formData.fullName,
+          phone: cleanPhone,
+          plan: `${plan.label} (${plan.type})`,
+          slot: formData.mealSlot,
+          address: `${formData.address}, ${formData.area}, ${formData.city} - ${formData.pincode}`,
+          items: ["Fresh Home Thali", "Phulka Roti", "Dal/Kadhi", "Seasonal Sabzi", "Steamed Rice"],
+          status: "CONFIRMED",
+          packedItems: { sabzi: false, rotis: false, dal: false, rice: false },
+        };
+        localStorage.setItem("hf_cook_orders", JSON.stringify([newCookOrder, ...existingCookOrders]));
+
+        // Cook Subscribers
+        const existingCookSubs = JSON.parse(localStorage.getItem("hf_cook_subscribers") || "[]");
+        const newCookSub = {
+          id: `sub_${Date.now()}`,
+          cookId: cook.id,
+          name: formData.fullName,
+          phone: cleanPhone,
+          plan: `${plan.label} (${plan.type})`,
+          slot: formData.mealSlot,
+          address: `${formData.address}, ${formData.area}, ${formData.city} - ${formData.pincode}`,
+          startDate: startDateStr,
+          remainingMeals: durationDays,
+          totalMeals: durationDays,
+          dietPreference: formData.dietaryNotes || "Standard pure veg",
+          status: "ACTIVE",
+        };
+        localStorage.setItem("hf_cook_subscribers", JSON.stringify([newCookSub, ...existingCookSubs]));
+
+        // Customer Orders
+        const existingCustOrders = JSON.parse(localStorage.getItem("hf_customer_orders") || "[]");
+        const newCustOrder = {
+          id: generatedId,
+          cookId: cook.id,
+          cookName: cook.kitchenName,
+          date: startDateStr,
+          status: "CONFIRMED",
+          amount: totalAmount,
+          items: ["Daily Thali Meal Box", "Phulka Roti (4 pcs)", "Dal", "Sabzi", "Rice"],
+          slot: formData.mealSlot,
+        };
+        localStorage.setItem("hf_customer_orders", JSON.stringify([newCustOrder, ...existingCustOrders]));
+
+        // Customer Subscriptions
+        const existingCustSubs = JSON.parse(localStorage.getItem("hf_customer_subscriptions") || "[]");
+        const newCustSub = {
+          id: `s_${Date.now()}`,
+          cookId: cook.id,
+          cookName: cook.kitchenName,
+          cookAvatar: cook.avatar || "https://randomuser.me/api/portraits/women/44.jpg",
+          plan: `${plan.label} (${plan.type})`,
+          status: "ACTIVE",
+          startDate: startDateStr,
+          endDate: endDateStr,
+          slot: formData.mealSlot,
+          price: totalAmount,
+          nextDelivery: `${formData.startDate || "Tomorrow"}, ${formData.mealSlot.includes("Lunch") ? "12:30 PM" : "7:30 PM"}`,
+          remainingMeals: durationDays,
+          totalMeals: durationDays,
+        };
+        localStorage.setItem("hf_customer_subscriptions", JSON.stringify([newCustSub, ...existingCustSubs]));
+      } catch (err) {
+        console.warn("LocalStorage sync warning:", err);
+      }
+    }
+
+    setConfirmedOrderId(generatedId);
+    setIsSubmitting(false);
+    setOrderConfirmed(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   if (orderConfirmed) {
@@ -317,7 +484,7 @@ function CheckoutContent() {
                     value={formData.mealSlot}
                     onChange={(e) => setFormData({ ...formData, mealSlot: e.target.value })}
                   >
-                    {cook.deliverySlots.map((slot) => (
+                    {cook.deliverySlots?.map((slot: string) => (
                       <option key={slot} value={slot}>
                         {slot}
                       </option>

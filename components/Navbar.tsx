@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useTheme } from "./ThemeProvider";
 import {
   Sun,
@@ -27,6 +28,7 @@ const navLinks = [
 ];
 
 export default function Navbar() {
+  const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -36,21 +38,40 @@ export default function Navbar() {
   // Authenticated user state from localStorage
   const [currentUser, setCurrentUser] = useState<{ name: string; role: string; email?: string } | null>(null);
 
-  useEffect(() => {
+  const syncUser = () => {
     try {
       const stored = localStorage.getItem("hf_user");
       if (stored) {
         setCurrentUser(JSON.parse(stored));
+      } else {
+        setCurrentUser(null);
       }
-    } catch {}
-  }, []);
+    } catch {
+      setCurrentUser(null);
+    }
+  };
+
+  useEffect(() => {
+    syncUser();
+
+    const onAuthChange = () => syncUser();
+    window.addEventListener("storage", onAuthChange);
+    window.addEventListener("auth-state-changed", onAuthChange);
+
+    return () => {
+      window.removeEventListener("storage", onAuthChange);
+      window.removeEventListener("auth-state-changed", onAuthChange);
+    };
+  }, [pathname]);
 
   const handleLogout = () => {
     try {
       localStorage.removeItem("hf_token");
       localStorage.removeItem("hf_user");
+      window.dispatchEvent(new Event("auth-state-changed"));
     } catch {}
     setCurrentUser(null);
+    setUserDropdown(false);
     window.location.href = "/";
   };
 
@@ -327,7 +348,7 @@ export default function Navbar() {
                         <Link href="/customer/dashboard" onClick={() => setUserDropdown(false)} className="dropdown-item">
                           <LayoutDashboard size={16} /> My Tiffins & Orders
                         </Link>
-                        <Link href="/customer/profile" onClick={() => setUserDropdown(false)} className="dropdown-item">
+                        <Link href="/customer/dashboard?tab=profile" onClick={() => setUserDropdown(false)} className="dropdown-item">
                           <Settings size={16} /> Account Profile
                         </Link>
                       </>
@@ -435,7 +456,7 @@ export default function Navbar() {
                   <Link href="/customer/dashboard" className="dropdown-item" onClick={() => setMenuOpen(false)}>
                     <LayoutDashboard size={16} /> My Tiffins
                   </Link>
-                  <Link href="/customer/profile" className="dropdown-item" onClick={() => setMenuOpen(false)}>
+                  <Link href="/customer/dashboard?tab=profile" className="dropdown-item" onClick={() => setMenuOpen(false)}>
                     <Settings size={16} /> Profile
                   </Link>
                 </>

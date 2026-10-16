@@ -1,9 +1,3 @@
-import { NextResponse } from "next/server";
-import { CITIES } from "@/lib/mockData";
+import { GET } from "@/app/api/v1/cities/route";
 
-export async function GET() {
-  return NextResponse.json({
-    success: true,
-    data: CITIES,
-  });
-}
+export { GET };

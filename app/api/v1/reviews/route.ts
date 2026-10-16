@@ -1,52 +1,122 @@
 import { NextResponse } from "next/server";
-
-const REVIEWS = [
-  {
-    id: "rev-1",
-    cookId: "c1",
-    customerName: "Rohan Mehta",
-    rating: 5,
-    date: "2024-10-10",
-    comment: "Truly tastes like ghar ka khana! Phulkas are super soft and sabzi has minimal oil.",
-  },
-  {
-    id: "rev-2",
-    cookId: "c1",
-    customerName: "Anjali Gupta",
-    rating: 5,
-    date: "2024-10-08",
-    comment: "The Dal Baati Churma on Sunday was mind-blowing. Consistent quality every single day.",
-  },
-  {
-    id: "rev-3",
-    cookId: "c2",
-    customerName: "Vikram Shah",
-    rating: 4,
-    date: "2024-10-11",
-    comment: "Very authentic Kathiyawadi flavors! Ringna no Olo is fantastic.",
-  },
-];
+import { prisma } from "@/lib/prisma";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const cookId = searchParams.get("cookId");
-  const filtered = cookId ? REVIEWS.filter((r) => r.cookId === cookId) : REVIEWS;
-  return NextResponse.json({ success: true, count: filtered.length, data: filtered });
+
+  try {
+    const where: any = {};
+    if (cookId) {
+      const targetCook = await prisma.cook.findFirst({
+        where: {
+          OR: [{ id: cookId }, { kitchenName: { contains: cookId.replace(/^c_/, ""), mode: "insensitive" } }],
+        },
+      });
+      if (targetCook) where.cookId = targetCook.id;
+    }
+
+    const reviews = await prisma.review.findMany({
+      where,
+      include: {
+        user: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const formatted = reviews.map((r) => ({
+      id: r.id,
+      cookId: r.cookId,
+      customerName: r.user?.name || "Customer",
+      rating: r.rating,
+      date: r.createdAt.toISOString().split("T")[0],
+      comment: r.comment,
+    }));
+
+    return NextResponse.json({
+      version: "v1",
+      success: true,
+      count: formatted.length,
+      data: formatted,
+    });
+  } catch (error) {
+    console.error("Reviews GET error:", error);
+    return NextResponse.json({ version: "v1", success: false, error: "Database service error" }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const newReview = {
-      id: `rev-${Date.now()}`,
-      date: new Date().toISOString().split("T")[0],
-      ...body,
-    };
+    if (!body.comment || body.comment.trim().length < 5) {
+      return NextResponse.json({ success: false, error: "Review comment must be at least 5 characters long." }, { status: 400 });
+    }
+
+    // 1. Resolve Cook in PostgreSQL
+    let targetCook = await prisma.cook.findFirst({
+      where: {
+        OR: [
+          { id: body.cookId },
+          { kitchenName: { contains: body.cookName || "Jeet", mode: "insensitive" } },
+        ],
+      },
+    });
+    if (!targetCook) targetCook = (await prisma.cook.findFirst())!;
+
+    // 2. Resolve User in PostgreSQL
+    let targetUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: body.userId },
+          { email: body.email || "demo@customer.com" },
+        ],
+      },
+    });
+    if (!targetUser) targetUser = (await prisma.user.findFirst({ where: { role: "CUSTOMER" } }))!;
+
+    const ratingVal = Math.max(1, Math.min(5, Number(body.rating) || 5));
+
+    // 3. Create review in PostgreSQL
+    const newReview = await prisma.review.create({
+      data: {
+        userId: targetUser.id,
+        cookId: targetCook.id,
+        rating: ratingVal,
+        comment: body.comment.trim(),
+      },
+      include: { user: true },
+    });
+
+    // 4. Update cook rating and total reviews in PostgreSQL
+    const prevTotal = targetCook.totalReviews || 0;
+    const prevRating = targetCook.ratingAvg || 5.0;
+    const newTotal = prevTotal + 1;
+    const newRating = Number((((prevRating * prevTotal) + ratingVal) / newTotal).toFixed(1));
+
+    await prisma.cook.update({
+      where: { id: targetCook.id },
+      data: {
+        totalReviews: newTotal,
+        ratingAvg: newRating,
+      },
+    });
+
     return NextResponse.json(
-      { success: true, message: "Review posted successfully. Thank you for your feedback!", data: newReview },
+      {
+        version: "v1",
+        success: true,
+        message: "Review posted successfully in PostgreSQL. Cook rating updated!",
+        data: {
+          id: newReview.id,
+          customerName: newReview.user?.name,
+          rating: newReview.rating,
+          comment: newReview.comment,
+        },
+      },
       { status: 201 }
     );
-  } catch {
-    return NextResponse.json({ success: false, error: "Invalid review submission" }, { status: 400 });
+  } catch (err: any) {
+    console.error("Review POST error:", err);
+    return NextResponse.json({ version: "v1", success: false, error: err?.message || "Invalid review submission" }, { status: 400 });
   }
 }

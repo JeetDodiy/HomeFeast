@@ -1,6 +1,12 @@
 import crypto from "crypto";
 
 // AES-256-GCM requires a 32-byte key (256 bits)
+if (process.env.NODE_ENV === "production" && !process.env.ENCRYPTION_KEY && !process.env.APP_SECRET) {
+  console.warn(
+    "[SECURITY WARNING] ENCRYPTION_KEY and APP_SECRET are unset in production environment! Using fallback key. Configure ENCRYPTION_KEY in production."
+  );
+}
+
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY
   ? Buffer.from(process.env.ENCRYPTION_KEY, "hex")
   : crypto.scryptSync(process.env.APP_SECRET || "homefeast-default-secret-salt-2026", "homefeast-salt", 32);

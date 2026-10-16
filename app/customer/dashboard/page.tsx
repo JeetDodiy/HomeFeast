@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   LayoutDashboard, ShoppingBag, Calendar, Star, AlertCircle,
@@ -49,6 +49,7 @@ const STATUS_COLORS: Record<string, string> = {
   PAUSED: "badge-pending",
   CANCELLED: "badge-cancelled",
   DELIVERED: "badge-active",
+  CONFIRMED: "badge-primary",
 };
 
 const SIDEBAR_TABS = [
@@ -62,20 +63,169 @@ const SIDEBAR_TABS = [
 
 export default function CustomerDashboardPage() {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [subscriptions, setSubscriptions] = useState(INITIAL_SUBSCRIPTIONS);
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [cutoffWarning, setCutoffWarning] = useState("");
+  const [currentUser, setCurrentUser] = useState<{ id?: string; name: string; email: string; city: string }>({
+    id: "usr_customer_1",
+    name: "Customer",
+    email: "customer@homefeast.in",
+    city: "Rajkot",
+  });
 
-  // Complaints form state
-  const [complaints, setComplaints] = useState([
-    { id: "TKT-304", cook: "Priya's Home Kitchen", issue: "Breakfast was 30 mins late on Oct 9", status: "RESOLVED", date: "2024-10-09", reply: "Cook apologized and credited 1 free meal." },
-  ]);
+  // Complaints and reviews state
+  const [complaints, setComplaints] = useState<any[]>([]);
   const [newComplaint, setNewComplaint] = useState({ cook: "Meera's Kitchen", issue: "" });
   const [complaintSubmitted, setComplaintSubmitted] = useState(false);
 
-  const [userReviews, setUserReviews] = useState([
-    { cook: "Meera's Kitchen", rating: 5, date: "2024-10-10", comment: "The Sunday special thali was incredible! Best home food in Rajkot." },
-  ]);
+  const [userReviews, setUserReviews] = useState<any[]>([]);
   const [newReview, setNewReview] = useState({ cook: "Meera's Kitchen", rating: 5, comment: "" });
   const [deleteSuccess, setDeleteSuccess] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam && SIDEBAR_TABS.some((s) => s.key === tabParam)) {
+        setActiveTab(tabParam);
+      }
+
+      // Check current user
+      let isDemoAccount = false;
+      try {
+        const u = localStorage.getItem("hf_user");
+        if (u) {
+          const userObj = JSON.parse(u);
+          if (userObj.name) {
+            isDemoAccount = userObj.email === "demo@customer.com" || userObj.email === "arjun.verma@example.com";
+            setCurrentUser({
+              id: userObj.id || "usr_customer_1",
+              name: userObj.name,
+              email: userObj.email || "customer@homefeast.in",
+              city: userObj.city || "Rajkot",
+            });
+          }
+        }
+      } catch {}
+
+      // Load customer subscriptions from localStorage and API
+      try {
+        const storedSubs = localStorage.getItem("hf_customer_subscriptions");
+        if (storedSubs) {
+          const parsed = JSON.parse(storedSubs);
+          if (Array.isArray(parsed)) {
+            setSubscriptions(parsed);
+          }
+        } else if (isDemoAccount) {
+          setSubscriptions(INITIAL_SUBSCRIPTIONS);
+        } else {
+          setSubscriptions([]);
+        }
+      } catch {
+        setSubscriptions([]);
+      }
+
+      // Load customer orders from localStorage and API
+      try {
+        const storedOrders = localStorage.getItem("hf_customer_orders");
+        if (storedOrders) {
+          const parsed = JSON.parse(storedOrders);
+          if (Array.isArray(parsed)) {
+            setOrders(parsed);
+          }
+        } else if (isDemoAccount) {
+          setOrders(MOCK_ORDERS);
+        } else {
+          setOrders([]);
+        }
+      } catch {
+        setOrders([]);
+      }
+
+      // Live Backend Query: sync real orders & subscriptions across devices
+      const targetUserId = currentUser?.id || (isDemoAccount ? "usr_customer_1" : "usr_customer_1");
+      fetch(`/api/v1/orders?userId=${encodeURIComponent(targetUserId)}`)
+        .then((res) => res.json())
+        .then((orderData) => {
+          if (orderData.success && Array.isArray(orderData.data) && orderData.data.length > 0) {
+            const formatted = orderData.data.map((o: any) => ({
+              id: o.id,
+              cookName: o.cookName || "HomeFeast Kitchen",
+              date: o.deliveryDate || o.date || new Date().toISOString().split("T")[0],
+              status: o.status || "CONFIRMED",
+              amount: o.totalAmount || o.amount || 120,
+              items: o.items || ["Daily Thali Meal Box"],
+              slot: o.slot || "Lunch (12–1:30 PM)",
+            }));
+            setOrders((prev) => {
+              const prevIds = new Set(prev.map((p) => p.id));
+              const merged = [...prev, ...formatted.filter((f: any) => !prevIds.has(f.id))];
+              if (typeof window !== "undefined") localStorage.setItem("hf_customer_orders", JSON.stringify(merged));
+              return merged;
+            });
+          }
+        })
+        .catch(() => {});
+
+      fetch(`/api/v1/subscriptions?userId=${encodeURIComponent(targetUserId)}`)
+        .then((res) => res.json())
+        .then((subJson) => {
+          if (subJson.success && Array.isArray(subJson.data) && subJson.data.length > 0) {
+            const formattedSubs = subJson.data.map((s: any) => ({
+              id: s.id,
+              cookName: s.cookName || "Meera's Kitchen",
+              cookAvatar: "https://randomuser.me/api/portraits/women/44.jpg",
+              plan: s.planName || s.plan || "Weekly Plan",
+              status: s.status || "ACTIVE",
+              startDate: s.startDate || "2026-10-14",
+              endDate: s.endDate || "2026-10-21",
+              slot: s.slot || "Lunch (12–1:30 PM)",
+              price: s.price || 749,
+              nextDelivery: `Tomorrow, ${s.slot ? (s.slot.includes("Lunch") ? "12:30 PM" : "7:30 PM") : "12:30 PM"}`,
+              remainingMeals: s.remainingMeals ?? s.totalMeals ?? 7,
+              totalMeals: s.totalMeals ?? 7,
+            }));
+            setSubscriptions((prev) => {
+              const prevIds = new Set(prev.map((p) => p.id));
+              const merged = [...prev, ...formattedSubs.filter((f: any) => !prevIds.has(f.id))];
+              if (typeof window !== "undefined") localStorage.setItem("hf_customer_subscriptions", JSON.stringify(merged));
+              return merged;
+            });
+          }
+        })
+        .catch(() => {});
+
+      // Load complaints
+      try {
+        const storedComplaints = localStorage.getItem("hf_customer_complaints");
+        if (storedComplaints) {
+          const parsed = JSON.parse(storedComplaints);
+          if (Array.isArray(parsed)) setComplaints(parsed);
+        } else if (isDemoAccount) {
+          setComplaints([
+            { id: "TKT-304", cook: "Priya's Home Kitchen", issue: "Breakfast was 30 mins late on Oct 9", status: "RESOLVED", date: "2024-10-09", reply: "Cook apologized and credited 1 free meal." },
+          ]);
+        } else {
+          setComplaints([]);
+        }
+      } catch {}
+
+      // Load user reviews
+      try {
+        const storedReviews = localStorage.getItem("hf_customer_reviews");
+        if (storedReviews) {
+          const parsed = JSON.parse(storedReviews);
+          if (Array.isArray(parsed)) setUserReviews(parsed);
+        } else if (isDemoAccount) {
+          setUserReviews([
+            { cook: "Meera's Kitchen", rating: 5, date: "2024-10-10", comment: "The Sunday special thali was incredible! Best home food in Rajkot." },
+          ]);
+        } else {
+          setUserReviews([]);
+        }
+      } catch {}
+    }
+  }, []);
 
   const handleDeleteAccount = async () => {
     if (confirm("Are you sure you want to request permanent account deletion under the DPDP Act 2023? This cannot be undone.")) {
@@ -94,19 +244,52 @@ export default function CustomerDashboardPage() {
   };
 
   const toggleSubscriptionStatus = (id: string) => {
-    setSubscriptions((prev) =>
-      prev.map((sub) => {
+    const currentHour = new Date().getHours();
+    const isPastCutoff = currentHour >= 20; // 8:00 PM cutoff rule
+    let targetStatus = "PAUSED";
+
+    setSubscriptions((prev) => {
+      const updated = prev.map((sub) => {
         if (sub.id === id) {
           const nextStatus = sub.status === "ACTIVE" ? "PAUSED" : "ACTIVE";
+          targetStatus = nextStatus;
+          const nextDeliveryText =
+            nextStatus === "ACTIVE"
+              ? isPastCutoff
+                ? "Day after tomorrow, 12:30 PM (8 PM Cutoff passed)"
+                : "Tomorrow, 12:30 PM"
+              : "Paused by User";
           return {
             ...sub,
             status: nextStatus,
-            nextDelivery: nextStatus === "ACTIVE" ? "Tomorrow, 12:30 PM" : "Paused by User",
+            nextDelivery: nextDeliveryText,
           };
         }
         return sub;
-      })
-    );
+      });
+
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("hf_customer_subscriptions", JSON.stringify(updated));
+        } catch {}
+      }
+
+      return updated;
+    });
+
+    // Sync status change to backend API
+    fetch("/api/v1/subscriptions", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status: targetStatus }),
+    }).catch(() => {});
+
+    if (isPastCutoff) {
+      setCutoffWarning("Notice: It is past the 8:00 PM cutoff. Tomorrow's meal is already in preparation. Your pause/resume change will take effect starting from the day after tomorrow.");
+    } else {
+      setCutoffWarning("Subscription updated successfully! Changes take effect starting tomorrow morning.");
+    }
+    setTimeout(() => setCutoffWarning(""), 7000);
   };
 
   const handleCreateComplaint = (e: React.FormEvent) => {
@@ -118,9 +301,15 @@ export default function CustomerDashboardPage() {
       issue: newComplaint.issue,
       status: "IN REVIEW",
       date: new Date().toISOString().split("T")[0],
-      reply: "Under investigation by HomeFeast Support.",
+      reply: "Under investigation by HomeFeast Support. Our representative will contact you.",
     };
-    setComplaints([item, ...complaints]);
+    const updated = [item, ...complaints];
+    setComplaints(updated);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("hf_customer_complaints", JSON.stringify(updated));
+      } catch {}
+    }
     setNewComplaint({ cook: "Meera's Kitchen", issue: "" });
     setComplaintSubmitted(true);
     setTimeout(() => setComplaintSubmitted(false), 3000);
@@ -129,12 +318,39 @@ export default function CustomerDashboardPage() {
   const handleAddReview = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newReview.comment.trim()) return;
-    setUserReviews([
+    const updated = [
       { ...newReview, date: new Date().toISOString().split("T")[0] },
       ...userReviews,
-    ]);
+    ];
+    setUserReviews(updated);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("hf_customer_reviews", JSON.stringify(updated));
+      } catch {}
+    }
+
+    // Persist to backend reviews API
+    fetch("/api/v1/reviews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cookId: "c1",
+        customerName: currentUser?.name || "Priya Sharma",
+        rating: Number(newReview.rating) || 5,
+        comment: newReview.comment.trim(),
+      }),
+    }).catch(() => {});
+
     setNewReview({ cook: "Meera's Kitchen", rating: 5, comment: "" });
   };
+
+  // Dynamic KPI Calculations
+  const activeSubsCount = subscriptions.filter((s) => s.status === "ACTIVE").length;
+  const totalDeliveredCount = orders.filter((o) => o.status === "DELIVERED").length;
+  const totalMonthSpent = orders
+    .filter((o) => o.status === "DELIVERED" || o.status === "CONFIRMED")
+    .reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
+  const reviewsCount = userReviews.length;
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg)" }}>
@@ -149,9 +365,9 @@ export default function CustomerDashboardPage() {
             />
             <div>
               <p style={{ fontFamily: "Poppins", fontWeight: 700, color: "var(--text)", fontSize: "0.9375rem", margin: 0 }}>
-                Arjun Verma
+                {currentUser.name}
               </p>
-              <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: 0 }}>Customer • Rajkot</p>
+              <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: 0 }}>Customer • {currentUser.city}</p>
             </div>
           </div>
         </div>
@@ -185,7 +401,7 @@ export default function CustomerDashboardPage() {
           <div>
             <div style={{ marginBottom: "2rem" }}>
               <h1 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.75rem", color: "var(--text)", marginBottom: "0.5rem" }}>
-                Good afternoon, Arjun! 👋
+                Good afternoon, {currentUser.name.split(" ")[0]}! 👋
               </h1>
               <p style={{ color: "var(--text-muted)" }}>Here is an overview of your active meal plans and recent deliveries.</p>
             </div>
@@ -193,10 +409,10 @@ export default function CustomerDashboardPage() {
             {/* KPI Cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "1.25rem", marginBottom: "2.5rem" }}>
               {[
-                { label: "Active Subscriptions", value: subscriptions.filter((s) => s.status === "ACTIVE").length.toString(), icon: Calendar, color: "var(--secondary)", bg: "rgba(47,125,79,0.1)" },
-                { label: "Total Orders Delivered", value: "47", icon: Package, color: "var(--primary)", bg: "rgba(232,101,10,0.1)" },
-                { label: "This Month Spent", value: "₹2,749", icon: TrendingUp, color: "var(--info)", bg: "rgba(37,99,235,0.1)" },
-                { label: "Reviews Given", value: userReviews.length.toString(), icon: Star, color: "var(--accent)", bg: "rgba(245,184,46,0.1)" },
+                { label: "Active Subscriptions", value: activeSubsCount.toString(), icon: Calendar, color: "var(--secondary)", bg: "rgba(47,125,79,0.1)" },
+                { label: "Total Orders Delivered", value: totalDeliveredCount.toString(), icon: Package, color: "var(--primary)", bg: "rgba(232,101,10,0.1)" },
+                { label: "This Month Spent", value: `₹${totalMonthSpent.toLocaleString("en-IN")}`, icon: TrendingUp, color: "var(--info)", bg: "rgba(37,99,235,0.1)" },
+                { label: "Reviews Given", value: reviewsCount.toString(), icon: Star, color: "var(--accent)", bg: "rgba(245,184,46,0.1)" },
               ].map(({ label, value, icon: Icon, color, bg }) => (
                 <div key={label} className="kpi-card">
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -216,84 +432,122 @@ export default function CustomerDashboardPage() {
             <div style={{ marginBottom: "2.5rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
                 <h2 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)" }}>Active Subscriptions</h2>
-                <button onClick={() => setActiveTab("subscriptions")} className="btn btn-ghost" style={{ fontSize: "0.875rem", color: "var(--primary)" }}>
-                  Manage All <ChevronRight size={14} />
-                </button>
+                {subscriptions.length > 0 && (
+                  <button onClick={() => setActiveTab("subscriptions")} className="btn btn-ghost" style={{ fontSize: "0.875rem", color: "var(--primary)" }}>
+                    Manage All <ChevronRight size={14} />
+                  </button>
+                )}
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                {subscriptions.map((sub) => (
-                  <div key={sub.id} className="card" style={{ padding: "1.5rem" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                        <img src={sub.cookAvatar} alt={sub.cookName} style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover" }} />
-                        <div>
-                          <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.0625rem", color: "var(--text)", margin: 0 }}>{sub.cookName}</h3>
-                          <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", margin: "0.25rem 0" }}>{sub.plan} · ₹{sub.price}</p>
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
-                            <Clock size={13} style={{ color: "var(--secondary)" }} />
-                            {sub.slot}
+              {subscriptions.length === 0 ? (
+                <div className="card" style={{ padding: "2.5rem 1.5rem", textAlign: "center", border: "1px dashed var(--border)" }}>
+                  <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(232,101,10,0.1)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem" }}>
+                    <Calendar size={28} />
+                  </div>
+                  <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.1rem", color: "var(--text)", marginBottom: "0.5rem" }}>
+                    No Active Subscriptions
+                  </h3>
+                  <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", maxWidth: 440, margin: "0 auto 1.25rem", lineHeight: 1.6 }}>
+                    You haven't subscribed to any meal plans yet. Explore certified home cooks in your city and get delicious, hot tiffins delivered to your doorstep.
+                  </p>
+                  <Link href="/search" className="btn btn-primary" style={{ display: "inline-flex" }}>
+                    <Plus size={16} /> Explore Local Cooks & Tiffins
+                  </Link>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                  {subscriptions.map((sub) => (
+                    <div key={sub.id} className="card" style={{ padding: "1.5rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                          <img src={sub.cookAvatar} alt={sub.cookName} style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover" }} />
+                          <div>
+                            <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.0625rem", color: "var(--text)", margin: 0 }}>{sub.cookName}</h3>
+                            <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", margin: "0.25rem 0" }}>{sub.plan} · ₹{sub.price}</p>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
+                              <Clock size={13} style={{ color: "var(--secondary)" }} />
+                              {sub.slot}
+                            </div>
                           </div>
                         </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+                          <span className={`badge ${STATUS_COLORS[sub.status]}`}>{sub.status}</span>
+                          <button
+                            onClick={() => toggleSubscriptionStatus(sub.id)}
+                            className={`btn ${sub.status === "ACTIVE" ? "btn-ghost" : "btn-secondary"}`}
+                            style={{ fontSize: "0.8125rem", padding: "0.375rem 0.875rem" }}
+                          >
+                            {sub.status === "ACTIVE" ? <><Pause size={14} /> Pause Plan</> : <><Play size={14} /> Resume Plan</>}
+                          </button>
+                        </div>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-                        <span className={`badge ${STATUS_COLORS[sub.status]}`}>{sub.status}</span>
-                        <button
-                          onClick={() => toggleSubscriptionStatus(sub.id)}
-                          className={`btn ${sub.status === "ACTIVE" ? "btn-ghost" : "btn-secondary"}`}
-                          style={{ fontSize: "0.8125rem", padding: "0.375rem 0.875rem" }}
-                        >
-                          {sub.status === "ACTIVE" ? <><Pause size={14} /> Pause Plan</> : <><Play size={14} /> Resume Plan</>}
-                        </button>
-                      </div>
+                      {sub.status === "ACTIVE" && (
+                        <div style={{ marginTop: "1rem", padding: "0.75rem", background: "rgba(47,125,79,0.08)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem", color: "var(--secondary)" }}>
+                          <Clock size={14} />
+                          <strong>Next delivery:</strong> {sub.nextDelivery}
+                        </div>
+                      )}
                     </div>
-                    {sub.status === "ACTIVE" && (
-                      <div style={{ marginTop: "1rem", padding: "0.75rem", background: "rgba(47,125,79,0.08)", borderRadius: "var(--radius-sm)", display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem", color: "var(--secondary)" }}>
-                        <Clock size={14} />
-                        <strong>Next delivery:</strong> {sub.nextDelivery}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Recent Orders Quick View */}
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
                 <h2 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)" }}>Recent Orders</h2>
-                <button onClick={() => setActiveTab("orders")} className="btn btn-ghost" style={{ fontSize: "0.875rem", color: "var(--primary)" }}>
-                  View All Orders <ChevronRight size={14} />
-                </button>
+                {orders.length > 0 && (
+                  <button onClick={() => setActiveTab("orders")} className="btn btn-ghost" style={{ fontSize: "0.875rem", color: "var(--primary)" }}>
+                    View All Orders <ChevronRight size={14} />
+                  </button>
+                )}
               </div>
 
-              <div className="card" style={{ overflow: "hidden" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface-alt)" }}>
-                      {["Order ID", "Cook", "Date", "Slot", "Amount", "Status"].map((h) => (
-                        <th key={h} style={{ padding: "0.875rem 1.25rem", textAlign: "left", fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-muted)", fontFamily: "Poppins" }}>
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {MOCK_ORDERS.slice(0, 3).map((order) => (
-                      <tr key={order.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                        <td style={{ padding: "1rem 1.25rem", fontWeight: 600, fontSize: "0.875rem", color: "var(--primary)" }}>{order.id}</td>
-                        <td style={{ padding: "1rem 1.25rem", fontSize: "0.875rem", color: "var(--text)" }}>{order.cookName}</td>
-                        <td style={{ padding: "1rem 1.25rem", fontSize: "0.875rem", color: "var(--text-muted)" }}>{order.date}</td>
-                        <td style={{ padding: "1rem 1.25rem", fontSize: "0.875rem", color: "var(--text-muted)" }}>{order.slot}</td>
-                        <td style={{ padding: "1rem 1.25rem", fontWeight: 700, color: "var(--text)" }}>₹{order.amount}</td>
-                        <td style={{ padding: "1rem 1.25rem" }}>
-                          <span className={`badge ${STATUS_COLORS[order.status]}`}>{order.status}</span>
-                        </td>
+              {orders.length === 0 ? (
+                <div className="card" style={{ padding: "2.5rem 1.5rem", textAlign: "center", border: "1px dashed var(--border)" }}>
+                  <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(47,125,79,0.1)", color: "var(--secondary)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem" }}>
+                    <ShoppingBag size={28} />
+                  </div>
+                  <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.1rem", color: "var(--text)", marginBottom: "0.5rem" }}>
+                    No Orders Placed Yet
+                  </h3>
+                  <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", maxWidth: 440, margin: "0 auto 1.25rem", lineHeight: 1.6 }}>
+                    Your daily meal deliveries and subscription trial orders will appear here once placed.
+                  </p>
+                  <Link href="/search" className="btn btn-secondary" style={{ display: "inline-flex" }}>
+                    Find Fresh Homemade Food
+                  </Link>
+                </div>
+              ) : (
+                <div className="card" style={{ overflow: "hidden" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface-alt)" }}>
+                        {["Order ID", "Cook", "Date", "Slot", "Amount", "Status"].map((h) => (
+                          <th key={h} style={{ padding: "0.875rem 1.25rem", textAlign: "left", fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-muted)", fontFamily: "Poppins" }}>
+                            {h}
+                          </th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {orders.slice(0, 3).map((order) => (
+                        <tr key={order.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                          <td style={{ padding: "1rem 1.25rem", fontWeight: 600, fontSize: "0.875rem", color: "var(--primary)" }}>{order.id}</td>
+                          <td style={{ padding: "1rem 1.25rem", fontSize: "0.875rem", color: "var(--text)" }}>{order.cookName}</td>
+                          <td style={{ padding: "1rem 1.25rem", fontSize: "0.875rem", color: "var(--text-muted)" }}>{order.date}</td>
+                          <td style={{ padding: "1rem 1.25rem", fontSize: "0.875rem", color: "var(--text-muted)" }}>{order.slot}</td>
+                          <td style={{ padding: "1rem 1.25rem", fontWeight: 700, color: "var(--text)" }}>₹{order.amount}</td>
+                          <td style={{ padding: "1rem 1.25rem" }}>
+                            <span className={`badge ${STATUS_COLORS[order.status] || "badge-active"}`}>{order.status}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -313,52 +567,88 @@ export default function CustomerDashboardPage() {
               </Link>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-              {subscriptions.map((sub) => (
-                <div key={sub.id} className="card" style={{ padding: "2rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "1rem" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                      <img src={sub.cookAvatar} alt={sub.cookName} style={{ width: 60, height: 60, borderRadius: "50%", objectFit: "cover" }} />
+            {/* 8:00 PM Cutoff Alert Banner */}
+            {cutoffWarning && (
+              <div
+                style={{
+                  background: "rgba(232, 101, 10, 0.08)",
+                  border: "1.5px solid var(--primary)",
+                  borderRadius: "var(--radius)",
+                  padding: "1rem 1.25rem",
+                  marginBottom: "1.5rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                  color: "var(--text)",
+                  fontSize: "0.9rem",
+                }}
+              >
+                <AlertCircle size={20} style={{ color: "var(--primary)", flexShrink: 0 }} />
+                <span>{cutoffWarning}</span>
+              </div>
+            )}
+
+            {subscriptions.length === 0 ? (
+              <div className="card" style={{ padding: "3rem 1.5rem", textAlign: "center", border: "1px dashed var(--border)" }}>
+                <Calendar size={48} style={{ color: "var(--primary)", opacity: 0.8, margin: "0 auto 1rem", display: "block" }} />
+                <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.2rem", color: "var(--text)", marginBottom: "0.5rem" }}>
+                  No Active Subscriptions Found
+                </h3>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.95rem", maxWidth: 460, margin: "0 auto 1.5rem", lineHeight: 1.6 }}>
+                  You have not subscribed to any meal plans yet. Choose from Daily, Weekly Saver, or Monthly home plans from certified cooks near you.
+                </p>
+                <Link href="/search" className="btn btn-primary" style={{ display: "inline-flex" }}>
+                  <Plus size={16} /> Browse Home Chefs & Plans
+                </Link>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                {subscriptions.map((sub) => (
+                  <div key={sub.id} className="card" style={{ padding: "2rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "1rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                        <img src={sub.cookAvatar} alt={sub.cookName} style={{ width: 60, height: 60, borderRadius: "50%", objectFit: "cover" }} />
+                        <div>
+                          <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.2rem", color: "var(--text)", margin: 0 }}>{sub.cookName}</h3>
+                          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", margin: "0.25rem 0" }}>{sub.plan} • ₹{sub.price} • {sub.slot}</p>
+                          <p style={{ fontSize: "0.8rem", color: "var(--secondary)", fontWeight: 600 }}>{sub.remainingMeals} meals remaining in current billing cycle</p>
+                        </div>
+                      </div>
+                      <span className={`badge ${STATUS_COLORS[sub.status]}`} style={{ fontSize: "0.85rem", padding: "0.35rem 0.85rem" }}>
+                        {sub.status}
+                      </span>
+                    </div>
+
+                    <div style={{ background: "var(--surface-alt)", borderRadius: "var(--radius-sm)", padding: "1rem", marginBottom: "1.25rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem" }}>
                       <div>
-                        <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.2rem", color: "var(--text)", margin: 0 }}>{sub.cookName}</h3>
-                        <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", margin: "0.25rem 0" }}>{sub.plan} • ₹{sub.price} • {sub.slot}</p>
-                        <p style={{ fontSize: "0.8rem", color: "var(--secondary)", fontWeight: 600 }}>{sub.remainingMeals} meals remaining in current billing cycle</p>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Duration</span>
+                        <p style={{ fontWeight: 600, fontSize: "0.875rem", margin: 0 }}>{sub.startDate} to {sub.endDate}</p>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Delivery Slot</span>
+                        <p style={{ fontWeight: 600, fontSize: "0.875rem", margin: 0 }}>{sub.slot}</p>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Next Expected Delivery</span>
+                        <p style={{ fontWeight: 600, fontSize: "0.875rem", margin: 0, color: "var(--secondary)" }}>{sub.nextDelivery}</p>
                       </div>
                     </div>
-                    <span className={`badge ${STATUS_COLORS[sub.status]}`} style={{ fontSize: "0.85rem", padding: "0.35rem 0.85rem" }}>
-                      {sub.status}
-                    </span>
-                  </div>
 
-                  <div style={{ background: "var(--surface-alt)", borderRadius: "var(--radius-sm)", padding: "1rem", marginBottom: "1.25rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem" }}>
-                    <div>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Duration</span>
-                      <p style={{ fontWeight: 600, fontSize: "0.875rem", margin: 0 }}>{sub.startDate} to {sub.endDate}</p>
-                    </div>
-                    <div>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Delivery Slot</span>
-                      <p style={{ fontWeight: 600, fontSize: "0.875rem", margin: 0 }}>{sub.slot}</p>
-                    </div>
-                    <div>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Next Expected Delivery</span>
-                      <p style={{ fontWeight: 600, fontSize: "0.875rem", margin: 0, color: "var(--secondary)" }}>{sub.nextDelivery}</p>
+                    <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+                      <button
+                        onClick={() => toggleSubscriptionStatus(sub.id)}
+                        className={`btn ${sub.status === "ACTIVE" ? "btn-outline" : "btn-secondary"}`}
+                      >
+                        {sub.status === "ACTIVE" ? <><Pause size={16} /> Pause Subscription (Up to 5 Days)</> : <><Play size={16} /> Resume Daily Delivery</>}
+                      </button>
+                      <Link href={`/contact?subject=Subscription%20Issue&id=${sub.id}`} className="btn btn-ghost">
+                        <MessageSquare size={16} /> Contact Cook
+                      </Link>
                     </div>
                   </div>
-
-                  <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                    <button
-                      onClick={() => toggleSubscriptionStatus(sub.id)}
-                      className={`btn ${sub.status === "ACTIVE" ? "btn-outline" : "btn-secondary"}`}
-                    >
-                      {sub.status === "ACTIVE" ? <><Pause size={16} /> Pause Subscription (Up to 5 Days)</> : <><Play size={16} /> Resume Daily Delivery</>}
-                    </button>
-                    <Link href={`/contact?subject=Subscription%20Issue&id=${sub.id}`} className="btn btn-ghost">
-                      <MessageSquare size={16} /> Contact Cook
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -372,34 +662,49 @@ export default function CustomerDashboardPage() {
               <p style={{ color: "var(--text-muted)" }}>Detailed record of every tiffin meal prepared and delivered to you.</p>
             </div>
 
-            <div className="card" style={{ overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface-alt)" }}>
-                    {["Order #", "Home Cook", "Date", "Meal Slot", "Items Included", "Price", "Status"].map((h) => (
-                      <th key={h} style={{ padding: "0.875rem 1.25rem", textAlign: "left", fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-muted)", fontFamily: "Poppins" }}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {MOCK_ORDERS.map((order) => (
-                    <tr key={order.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                      <td style={{ padding: "1.1rem 1.25rem", fontWeight: 600, fontSize: "0.875rem", color: "var(--primary)" }}>{order.id}</td>
-                      <td style={{ padding: "1.1rem 1.25rem", fontSize: "0.875rem", color: "var(--text)", fontWeight: 500 }}>{order.cookName}</td>
-                      <td style={{ padding: "1.1rem 1.25rem", fontSize: "0.875rem", color: "var(--text-muted)" }}>{order.date}</td>
-                      <td style={{ padding: "1.1rem 1.25rem", fontSize: "0.875rem", color: "var(--text)" }}>{order.slot}</td>
-                      <td style={{ padding: "1.1rem 1.25rem", fontSize: "0.8125rem", color: "var(--text-muted)" }}>{order.items.join(", ")}</td>
-                      <td style={{ padding: "1.1rem 1.25rem", fontWeight: 700, color: "var(--text)" }}>₹{order.amount}</td>
-                      <td style={{ padding: "1.1rem 1.25rem" }}>
-                        <span className={`badge ${STATUS_COLORS[order.status]}`}>{order.status}</span>
-                      </td>
+            {orders.length === 0 ? (
+              <div className="card" style={{ padding: "3rem 1.5rem", textAlign: "center", border: "1px dashed var(--border)" }}>
+                <ShoppingBag size={48} style={{ color: "var(--secondary)", opacity: 0.8, margin: "0 auto 1rem", display: "block" }} />
+                <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.2rem", color: "var(--text)", marginBottom: "0.5rem" }}>
+                  No Order History Yet
+                </h3>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.95rem", maxWidth: 460, margin: "0 auto 1.5rem", lineHeight: 1.6 }}>
+                  You haven't placed any meal orders yet. Order a single trial thali or subscribe to a weekly meal plan.
+                </p>
+                <Link href="/search" className="btn btn-primary" style={{ display: "inline-flex" }}>
+                  Order Your First Meal
+                </Link>
+              </div>
+            ) : (
+              <div className="card" style={{ overflow: "hidden" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface-alt)" }}>
+                      {["Order #", "Home Cook", "Date", "Meal Slot", "Items Included", "Price", "Status"].map((h) => (
+                        <th key={h} style={{ padding: "0.875rem 1.25rem", textAlign: "left", fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-muted)", fontFamily: "Poppins" }}>
+                          {h}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {orders.map((order) => (
+                      <tr key={order.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "1.1rem 1.25rem", fontWeight: 600, fontSize: "0.875rem", color: "var(--primary)" }}>{order.id}</td>
+                        <td style={{ padding: "1.1rem 1.25rem", fontSize: "0.875rem", color: "var(--text)", fontWeight: 500 }}>{order.cookName}</td>
+                        <td style={{ padding: "1.1rem 1.25rem", fontSize: "0.875rem", color: "var(--text-muted)" }}>{order.date}</td>
+                        <td style={{ padding: "1.1rem 1.25rem", fontSize: "0.875rem", color: "var(--text)" }}>{order.slot}</td>
+                        <td style={{ padding: "1.1rem 1.25rem", fontSize: "0.8125rem", color: "var(--text-muted)" }}>{order.items?.join(", ") || "Fresh Thali"}</td>
+                        <td style={{ padding: "1.1rem 1.25rem", fontWeight: 700, color: "var(--text)" }}>₹{order.amount}</td>
+                        <td style={{ padding: "1.1rem 1.25rem" }}>
+                          <span className={`badge ${STATUS_COLORS[order.status] || "badge-active"}`}>{order.status}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
@@ -428,6 +733,7 @@ export default function CustomerDashboardPage() {
                       onChange={(e) => setNewReview({ ...newReview, cook: e.target.value })}
                     >
                       <option value="Meera's Kitchen">Meera's Kitchen</option>
+                      <option value="Jeet's Kitchen">Jeet's Kitchen</option>
                       <option value="Priya's Home Kitchen">Priya's Home Kitchen</option>
                       <option value="Jain Bhavan Tiffin">Jain Bhavan Tiffin</option>
                     </select>
@@ -467,21 +773,31 @@ export default function CustomerDashboardPage() {
             </div>
 
             {/* Past Reviews */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              {userReviews.map((rev, i) => (
-                <div key={i} className="card" style={{ padding: "1.5rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-                    <h4 style={{ fontWeight: 700, color: "var(--text)" }}>{rev.cook}</h4>
-                    <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>{rev.date}</span>
+            {userReviews.length === 0 ? (
+              <div className="card" style={{ padding: "2.5rem 1.5rem", textAlign: "center", border: "1px dashed var(--border)" }}>
+                <Star size={40} style={{ color: "var(--accent)", opacity: 0.8, margin: "0 auto 0.75rem", display: "block" }} />
+                <h4 style={{ fontWeight: 700, color: "var(--text)", marginBottom: "0.25rem" }}>No Reviews Submitted Yet</h4>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", margin: 0 }}>
+                  Share your experience with your home cooks after receiving deliveries!
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {userReviews.map((rev, i) => (
+                  <div key={i} className="card" style={{ padding: "1.5rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                      <h4 style={{ fontWeight: 700, color: "var(--text)" }}>{rev.cook}</h4>
+                      <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>{rev.date}</span>
+                    </div>
+                    <div style={{ color: "var(--accent)", marginBottom: "0.5rem" }}>
+                      {"★".repeat(rev.rating)}
+                      <span style={{ color: "var(--border)" }}>{"★".repeat(5 - rev.rating)}</span>
+                    </div>
+                    <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", lineHeight: 1.6 }}>{rev.comment}</p>
                   </div>
-                  <div style={{ color: "var(--accent)", marginBottom: "0.5rem" }}>
-                    {"★".repeat(rev.rating)}
-                    <span style={{ color: "var(--border)" }}>{"★".repeat(5 - rev.rating)}</span>
-                  </div>
-                  <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", lineHeight: 1.6 }}>{rev.comment}</p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -515,6 +831,7 @@ export default function CustomerDashboardPage() {
                     onChange={(e) => setNewComplaint({ ...newComplaint, cook: e.target.value })}
                   >
                     <option value="Meera's Kitchen">Meera's Kitchen</option>
+                    <option value="Jeet's Kitchen">Jeet's Kitchen</option>
                     <option value="Priya's Home Kitchen">Priya's Home Kitchen</option>
                     <option value="Jain Bhavan Tiffin">Jain Bhavan Tiffin</option>
                   </select>
@@ -539,20 +856,30 @@ export default function CustomerDashboardPage() {
             </div>
 
             {/* List of Tickets */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              {complaints.map((c) => (
-                <div key={c.id} className="card" style={{ padding: "1.5rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-                    <strong style={{ fontFamily: "Poppins", color: "var(--primary)" }}>{c.id} • {c.cook}</strong>
-                    <span className="badge badge-secondary">{c.status}</span>
+            {complaints.length === 0 ? (
+              <div className="card" style={{ padding: "2.5rem 1.5rem", textAlign: "center", border: "1px dashed var(--border)" }}>
+                <CheckCircle size={40} style={{ color: "var(--secondary)", opacity: 0.8, margin: "0 auto 0.75rem", display: "block" }} />
+                <h4 style={{ fontWeight: 700, color: "var(--text)", marginBottom: "0.25rem" }}>No Active Disputes or Complaints</h4>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", margin: 0 }}>
+                  All your deliveries and meal plans are in good standing. If you ever face an issue, submit a ticket above.
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {complaints.map((c) => (
+                  <div key={c.id} className="card" style={{ padding: "1.5rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                      <strong style={{ fontFamily: "Poppins", color: "var(--primary)" }}>{c.id} • {c.cook}</strong>
+                      <span className="badge badge-secondary">{c.status}</span>
+                    </div>
+                    <p style={{ color: "var(--text)", fontSize: "0.9rem", marginBottom: "0.75rem" }}>{c.issue}</p>
+                    <div style={{ padding: "0.75rem", background: "var(--surface-alt)", borderRadius: "var(--radius-sm)", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                      <strong>Support Update:</strong> {c.reply}
+                    </div>
                   </div>
-                  <p style={{ color: "var(--text)", fontSize: "0.9rem", marginBottom: "0.75rem" }}>{c.issue}</p>
-                  <div style={{ padding: "0.75rem", background: "var(--surface-alt)", borderRadius: "var(--radius-sm)", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                    <strong>Support Update:</strong> {c.reply}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

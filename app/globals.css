@@ -446,6 +446,13 @@ select:-webkit-autofill {
     padding: 0 1.5rem;
   }
 
+  .container-wide {
+    width: 100%;
+    max-width: 1540px;
+    margin: 0 auto;
+    padding: 0 clamp(1.25rem, 3.5vw, 3rem);
+  }
+
   /* Skeleton loader */
   .skeleton {
     background: linear-gradient(90deg, var(--border) 25%, var(--surface-alt) 50%, var(--border) 75%);
@@ -536,6 +543,32 @@ select:-webkit-autofill {
 .delay-200 { animation-delay: 0.2s; }
 .delay-300 { animation-delay: 0.3s; }
 .delay-400 { animation-delay: 0.4s; }
+
+/* Dynamic Floating & Glow Animations */
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(0.8deg); }
+}
+
+@keyframes floatReverse {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(10px) rotate(-0.8deg); }
+}
+
+@keyframes auraGlow {
+  0%, 100% { transform: scale(0.96) rotate(0deg); opacity: 0.45; }
+  50% { transform: scale(1.08) rotate(180deg); opacity: 0.75; }
+}
+
+@keyframes pulseGently {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+.float-slow { animation: floatSlow 6s ease-in-out infinite; }
+.float-reverse { animation: floatReverse 7s ease-in-out infinite; }
+.pulse-gently { animation: pulseGently 3s ease-in-out infinite; }
+.glow-aura { animation: auraGlow 10s ease-in-out infinite; }
 
 /* ========================
    NAVBAR

@@ -1,0 +1,667 @@
+# MASTER PROMPT: Complete Website Audit, Testing, Bug Detection & Professional Quality Assurance
+
+## 1. ROLE AND RESPONSIBILITY
+
+Act as a complete professional software quality team consisting of:
+
+- **Company CEO / Product Owner:** Evaluate whether the website meets business requirements and provides real value to users.
+- **Senior Software Architect:** Review the overall architecture, code structure, database design, and system reliability.
+- **Senior Full-Stack Developer:** Inspect frontend, backend, APIs, business logic, database operations, and integrations.
+- **QA Automation Engineer:** Test every feature, button, link, form, input field, workflow, and user interaction.
+- **Software Tester:** Identify functional bugs, edge cases, incorrect calculations, broken algorithms, and unexpected behavior.
+- **Cybersecurity Engineer:** Audit authentication, authorization, input validation, data exposure, and common web vulnerabilities.
+- **UI/UX Designer:** Evaluate responsiveness, usability, visual consistency, accessibility, and professional presentation.
+- **Database Engineer:** Verify models, relationships, constraints, queries, transactions, and data integrity.
+- **DevOps / Deployment Engineer:** Check configuration, dependencies, environment variables, logs, deployment readiness, and production stability.
+
+Your mission is to perform a complete, evidence-based audit of my existing website as if it were being reviewed before release by a professional software company.
+
+Do not behave like a basic code reviewer. Perform systematic testing and verify actual behavior wherever tools and permissions allow.
+
+## 2. PRIMARY OBJECTIVE
+
+Inspect the entire existing project and determine:
+
+1. What works correctly.
+2. What works incorrectly.
+3. What is partially implemented.
+4. What is missing or incomplete.
+5. What features are broken.
+6. What algorithms or calculations produce incorrect results.
+7. What fields have validation problems.
+8. What buttons, links, routes, APIs, and workflows fail.
+9. What security vulnerabilities or data-integrity risks exist.
+10. What should be improved before the website can be considered production-ready.
+
+Create a detailed, actionable bug report in a Markdown file named `WEBSITE_AUDIT_REPORT.md`.
+
+The report must include reproducible steps, affected files or components, expected behavior, actual behavior, severity, evidence, and recommended fixes for every confirmed issue.
+
+**Important:** Do not claim that a feature has been tested unless you actually tested it or clearly identify the review as code inspection only.
+
+## 3. SAFETY RULES BEFORE TESTING
+
+Before making any changes:
+
+- Inspect the complete project structure.
+- Identify the programming languages, frameworks, libraries, database, APIs, and deployment architecture.
+- Read the README, dependency files, configuration files, routing definitions, database models, and existing tests.
+- Identify all existing features and user roles.
+- Check Git status and preserve existing uncommitted work.
+- Establish a baseline of the current application behavior.
+- Create or recommend a separate branch or safe working copy before making modifications.
+- Determine whether the database contains production or personal data.
+- Use a dedicated test environment and test accounts wherever possible.
+- Back up data before any test that could modify it.
+- Never delete real records, reset a production database, or run destructive migrations without explicit approval.
+- Never expose passwords, API keys, tokens, secret environment variables, or personal data in the report.
+- Do not install unnecessary dependencies or change the framework without a clear reason.
+
+Do not modify production data, send real emails or messages, initiate real payments, or perform destructive actions during testing.
+
+If a test cannot be performed safely, document the limitation and provide safe instructions for completing it.
+
+## 4. COMPLETE PROJECT DISCOVERY
+
+Inspect all relevant project files, including:
+
+- Frontend pages, layouts, templates, components, stylesheets, and scripts.
+- Backend controllers, services, business logic, and utility functions.
+- Database models, schemas, migrations, relationships, and constraints.
+- API endpoints, request handlers, serializers, and middleware.
+- Authentication and authorization logic.
+- Forms, field validators, and error handlers.
+- Configuration and environment-variable usage.
+- Background jobs, scheduled tasks, and external integrations.
+- Automated tests, fixtures, seed data, and mock services.
+- Build scripts, deployment settings, and dependency versions.
+
+Create a feature inventory containing:
+
+| Feature / Module | Main Components | User Roles | Test Status |
+|---|---|---|---|
+| Authentication | Login, logout, sessions | Relevant roles | Pending |
+| Dashboard | Statistics, charts, summaries | Relevant roles | Pending |
+| Data management | Create, view, edit, delete | Relevant roles | Pending |
+| Search and filtering | Search, sorting, pagination | Relevant roles | Pending |
+| Reports | Calculations, exports, summaries | Relevant roles | Pending |
+
+Adapt this inventory to the actual website. Do not assume that every example feature exists.
+
+Identify missing documentation, dead code, duplicate logic, incomplete modules, and inconsistent implementations.
+
+## 5. TEST EVERY FEATURE AND USER WORKFLOW
+
+For every feature discovered in the project, test all applicable operations:
+
+- Create a record.
+- View a record.
+- Edit a record.
+- Delete a record.
+- Search for a record.
+- Filter and sort records.
+- Navigate between related pages.
+- Submit valid data.
+- Submit invalid data.
+- Cancel an operation.
+- Refresh the page.
+- Navigate backward and forward.
+- Test empty states and no-results states.
+- Test loading states and error states.
+- Check whether changes persist after reload.
+- Verify that the UI and database remain consistent.
+
+Test the complete user journey, not just individual pages.
+
+For example:
+
+Login → Dashboard → Create Record → Edit Record → View Updated Record → Delete Test Record → Verify Final State.
+
+Test all applicable workflows for each user role.
+
+Check whether buttons and links perform their advertised actions. Identify buttons that do nothing, links pointing to incorrect destinations, broken redirects, missing pages, duplicate submissions, and actions that appear successful but fail in the backend.
+
+## 6. TEST EVERY INPUT FIELD
+
+Build a field-by-field inventory for every form.
+
+For each field, verify:
+
+1. Correct label and purpose.
+2. Required versus optional behavior.
+3. Accepted data type.
+4. Minimum and maximum length.
+5. Numeric minimum and maximum values.
+6. Decimal precision where applicable.
+7. Valid and invalid formats.
+8. Boundary values.
+9. Empty, null, and whitespace-only values.
+10. Leading and trailing whitespace.
+11. Duplicate values and uniqueness rules.
+12. Invalid characters and Unicode input.
+13. Date and time validity.
+14. Invalid selections and missing foreign-key references.
+15. Frontend validation.
+16. Backend validation.
+17. Database-level constraints.
+18. Clear and accurate error messages.
+19. Correct preservation of valid input after validation errors.
+20. Correct saving and retrieval of submitted data.
+
+Test appropriate edge cases, including:
+
+- Empty strings.
+- Very long input.
+- Zero and negative numbers.
+- Extremely large numbers.
+- Invalid email addresses.
+- Invalid dates.
+- Duplicate usernames or identifiers.
+- Missing required fields.
+- Malformed requests.
+- Unexpected data types.
+- Decimal rounding and precision.
+- Values that exceed database constraints.
+
+Use the actual requirements and field definitions to determine whether a value should be accepted or rejected. Do not invent restrictions that the business rules do not require.
+
+Verify that backend validation remains effective when frontend validation is bypassed.
+
+## 7. VERIFY ALL ALGORITHMS AND BUSINESS LOGIC
+
+Identify every algorithm, formula, conditional rule, calculation, and decision-making process in the codebase.
+
+For each one:
+
+1. Explain its purpose.
+2. Identify its inputs and outputs.
+3. Trace the execution path.
+4. Verify the implementation against the intended business rules.
+5. Check boundary conditions.
+6. Test normal, exceptional, and edge-case inputs.
+7. Check off-by-one errors.
+8. Check incorrect comparison operators.
+9. Check rounding and floating-point precision.
+10. Check null values, division by zero, and invalid input.
+11. Check duplicate processing and repeated requests.
+12. Check concurrency and transaction handling where relevant.
+13. Compare results against independently calculated expected results.
+14. Record reproducible failures.
+
+For financial calculations, use appropriate decimal or fixed-precision arithmetic instead of relying blindly on binary floating-point numbers.
+
+For dashboards and reports, independently calculate expected totals from test data and compare them with displayed values.
+
+For sorting, searching, filtering, pagination, and date-range logic, test boundary records, empty results, duplicate values, and records at page or date boundaries.
+
+For inventory, booking, payment, or order systems, if applicable, test quantity changes, stock limits, duplicate operations, invalid transitions, and concurrent updates.
+
+Never change a business algorithm merely because a different implementation looks cleaner. First establish the intended behavior and prove the discrepancy.
+
+## 8. DATABASE AND DATA INTEGRITY AUDIT
+
+Inspect the database schema and verify:
+
+- Primary keys and foreign keys.
+- Required fields and nullability.
+- Unique constraints.
+- Correct field types and lengths.
+- Relationships between entities.
+- Cascade and deletion behavior.
+- Orphaned records.
+- Duplicate records.
+- Incorrect default values.
+- Migration consistency.
+- Transaction boundaries.
+- Rollback behavior.
+- Atomicity of multi-step operations.
+- Query correctness.
+- N+1 query risks where applicable.
+- Pagination and query performance.
+- Data consistency between related tables.
+- Data leakage across users or organizations.
+
+Verify that invalid operations do not leave partially updated records.
+
+Use disposable test records to check that database changes match the visible application state.
+
+Never repair, delete, or overwrite production data during the audit without explicit authorization.
+
+## 9. FRONTEND AND UI/UX AUDIT
+
+Inspect every page at desktop, tablet, and mobile sizes.
+
+Check:
+
+- Layout consistency.
+- Responsive behavior.
+- Overflow and horizontal scrolling.
+- Broken images and missing assets.
+- Typography and spacing.
+- Color contrast.
+- Navigation and active states.
+- Form usability.
+- Validation messages.
+- Loading indicators.
+- Empty states.
+- Success and failure notifications.
+- Dialogs and confirmation messages.
+- Tables, cards, menus, and dropdowns.
+- Keyboard navigation.
+- Focus visibility.
+- Accessible labels and semantic structure.
+- Screen-reader accessibility where practical.
+- Browser console errors.
+- JavaScript runtime errors.
+- Failed network requests.
+
+Verify that important actions are visually clear and that destructive actions require appropriate confirmation.
+
+Check that the application does not display misleading success messages when the server operation fails.
+
+Review the design as a professional product intended for real customers, not merely as a college demonstration.
+
+## 10. BACKEND, API, AND ERROR-HANDLING AUDIT
+
+Inspect all discovered endpoints and backend workflows.
+
+Verify:
+
+- Correct HTTP methods and status codes.
+- Request validation.
+- Response structure.
+- Authentication requirements.
+- Authorization checks.
+- Invalid identifiers.
+- Missing records.
+- Malformed JSON or form submissions.
+- Unsupported methods.
+- Duplicate requests.
+- Pagination parameters.
+- Error handling.
+- Timeout and dependency failures.
+- Database exceptions.
+- Logging and diagnostic information.
+- Consistent API behavior.
+
+Where API testing is possible, use a dedicated test environment and valid test credentials.
+
+Check whether unauthorized users can access protected endpoints by calling them directly instead of using the UI.
+
+Confirm that sensitive stack traces, database details, credentials, and internal implementation details are not exposed to ordinary users.
+
+## 11. SECURITY AUDIT
+
+Review the website for applicable risks, including:
+
+- Broken authentication.
+- Broken access control.
+- Privilege escalation.
+- Insecure direct object references.
+- SQL injection.
+- Cross-site scripting (XSS).
+- Cross-site request forgery (CSRF).
+- Server-side request forgery (SSRF), where applicable.
+- Unsafe file uploads.
+- Path traversal.
+- Session-management weaknesses.
+- Insecure password storage.
+- Weak password-reset workflows.
+- Sensitive information exposure.
+- Missing security headers.
+- Insecure cookie settings.
+- Excessive permissions.
+- Unprotected administrative endpoints.
+- Dependency vulnerabilities.
+- Debug mode enabled in production.
+- Secrets committed to source control.
+- Excessive or missing rate limiting where appropriate.
+
+Follow safe, authorized, non-destructive testing practices.
+
+Do not attack third-party systems, bypass authorization beyond the approved test scope, exfiltrate data, or run destructive security tests against production.
+
+For every suspected vulnerability, distinguish between confirmed findings and potential risks requiring further verification.
+
+## 12. AUTOMATED TESTING AND REGRESSION TESTS
+
+First inspect the existing test framework and test suite.
+
+Where practical, create or run appropriate tests for:
+
+- Unit testing of functions and algorithms.
+- Integration testing of database and service interactions.
+- API testing.
+- End-to-end browser testing.
+- Form validation.
+- Authentication and role permissions.
+- Regression testing for existing features.
+- Negative testing and edge cases.
+
+Use the tools already available in the project where possible. Choose appropriate tools based on the actual technology stack rather than forcing a particular framework.
+
+Run the existing test suite before making fixes and again after changes.
+
+For each failure, record:
+
+- Test name.
+- Test result.
+- Relevant error message.
+- Affected module.
+- Reproduction instructions.
+- Whether the failure existed before the audit or appeared after a change.
+
+Do not make tests pass by weakening assertions, skipping meaningful checks, deleting tests, or hardcoding expected outcomes.
+
+If browser automation or a required testing environment is unavailable, state that limitation and provide the test cases that still need execution.
+
+## 13. PERFORMANCE AND RELIABILITY
+
+Check the following where applicable:
+
+- Slow page loads.
+- Large JavaScript and CSS bundles.
+- Unoptimized images.
+- Repeated database queries.
+- Inefficient algorithms.
+- Missing pagination.
+- Memory-intensive operations.
+- Slow API endpoints.
+- Unnecessary network requests.
+- Resource leaks.
+- Poor caching behavior.
+- Excessive logging.
+- Timeout handling.
+- Failure recovery.
+- Dependency availability.
+- Large datasets and realistic workloads.
+
+Use profiling or repeatable measurements when available.
+
+Record the environment, test data size, response times, and methodology. Do not invent performance measurements or claim scalability without evidence.
+
+## 14. ACCESSIBILITY, SEO, AND PRODUCTION READINESS
+
+Where relevant to the website, inspect:
+
+**Accessibility**
+- Semantic HTML.
+- Accessible form labels.
+- Keyboard accessibility.
+- Focus management.
+- Color contrast.
+- Alternative text.
+- Error-message accessibility.
+
+**SEO**
+- Page titles and descriptions.
+- Canonical URLs.
+- Sitemap and robots directives.
+- Heading hierarchy.
+- Broken internal links.
+- Indexability.
+- Social-sharing metadata where relevant.
+
+**Production readiness**
+- Environment-specific configuration.
+- Secure secret management.
+- Database migrations.
+- Error monitoring.
+- Backup and recovery plans.
+- Logging.
+- Dependency maintenance.
+- HTTPS configuration.
+- Health checks.
+- Deployment configuration.
+- Recovery from failed deployments.
+
+Separate essential business functionality from optional improvements.
+
+## 15. TEST EXECUTION RULES
+
+Follow this sequence:
+
+Phase 1: Discover the project and document its architecture.
+
+Phase 2: Build a complete inventory of pages, features, roles, fields, algorithms, APIs, and database entities.
+
+Phase 3: Run baseline checks and existing tests.
+
+Phase 4: Perform static code inspection and identify suspicious logic.
+
+Phase 5: Execute functional, field-validation, integration, and end-to-end tests.
+
+Phase 6: Verify calculations and business rules independently.
+
+Phase 7: Perform safe security, performance, accessibility, and responsive checks.
+
+Phase 8: Record and prioritize all findings.
+
+Phase 9: Reproduce and verify suspected bugs.
+
+Phase 10: Produce the final report and proposed remediation plan.
+
+Do not skip a phase silently. If a phase cannot be completed, document why, what remains untested, and what access or tools are required.
+
+## 16. BUG SEVERITY CLASSIFICATION
+
+Assign each finding a severity level:
+
+**P0 — Critical**
+A confirmed issue that creates an immediate, severe risk, such as a major security compromise, catastrophic data loss, or a completely unusable core system.
+
+**P1 — High**
+A serious issue affecting a major business workflow, critical data integrity, access control, or essential functionality.
+
+**P2 — Medium**
+A significant defect affecting a feature, user workflow, calculation, validation rule, or usability without causing a critical system failure.
+
+**P3 — Low**
+A minor defect, cosmetic issue, small usability problem, or non-critical inconsistency.
+
+**P4 — Informational**
+A maintainability suggestion, optional enhancement, or improvement opportunity without a confirmed functional defect.
+
+Do not inflate severity. Explain the real impact and distinguish confirmed defects from speculative risks.
+
+## 17. REQUIRED BUG REPORT FORMAT
+
+Create `WEBSITE_AUDIT_REPORT.md` with the following sections.
+
+### A. Executive Summary
+
+Include:
+- Overall audit outcome.
+- Main strengths.
+- Most important defects.
+- Security concerns.
+- Production-readiness assessment.
+- Features or areas that remain untested.
+- Recommended next steps.
+
+Do not assign an arbitrary quality score unless a transparent scoring method is defined.
+
+### B. Project Inventory
+
+List:
+- Technology stack.
+- Application modules.
+- Pages and routes.
+- User roles and permissions.
+- Forms and fields.
+- API endpoints.
+- Database entities.
+- External integrations.
+- Existing tests.
+
+### C. Test Coverage Matrix
+
+For each feature, report:
+
+| Feature | Test Type | Status | Evidence | Remaining Work |
+|---|---|---|---|---|
+| Login | Functional/security | Pass/Fail/Blocked/Not tested | Test reference | Remaining cases |
+| Create record | CRUD/validation | Pass/Fail/Blocked/Not tested | Test reference | Remaining cases |
+| Calculations | Logic/boundaries | Pass/Fail/Blocked/Not tested | Expected vs actual | Remaining cases |
+
+Use the status accurately. Do not mark an entire feature as passed because one happy-path test succeeded.
+
+### D. Detailed Bug Register
+
+For every finding, include:
+
+- Bug ID.
+- Short title.
+- Severity.
+- Status: Confirmed, Suspected, or Unverified.
+- Affected module.
+- Affected file, function, endpoint, or field.
+- Preconditions.
+- Exact reproduction steps.
+- Test input.
+- Expected result.
+- Actual result.
+- Evidence or relevant log.
+- User or business impact.
+- Root cause, if established.
+- Recommended fix.
+- Regression tests required.
+
+### E. Algorithm and Calculation Report
+
+For each algorithm or formula, include:
+- Name and purpose.
+- Implementation location.
+- Expected business rule.
+- Test cases.
+- Input and expected output.
+- Actual output.
+- Boundary conditions.
+- Result and explanation.
+- Proposed correction, if required.
+
+### F. Field Validation Report
+
+List every discovered form and field, including:
+- Field name.
+- Data type.
+- Required or optional.
+- Expected validation.
+- Tests executed.
+- Results.
+- Missing constraints.
+- Recommended changes.
+
+### G. Security Findings
+
+For each finding, describe:
+- Vulnerability category.
+- Severity.
+- Confirmation status.
+- Safe reproduction method.
+- Evidence.
+- Impact.
+- Remediation.
+- Retest procedure.
+
+Never include real secrets or sensitive personal data.
+
+### H. Performance and Accessibility Findings
+
+Document measured problems, testing conditions, affected pages, and practical recommendations.
+
+### I. Missing or Incomplete Features
+
+Separate:
+- Requirements that are clearly missing.
+- Features that appear partially implemented.
+- Potential enhancements that are not confirmed requirements.
+
+Do not label an optional enhancement as a bug without evidence that it is required.
+
+### J. Prioritized Fix Plan
+
+Group the recommended work into:
+
+1. Fix immediately: confirmed critical security, data-loss, or system-breaking issues.
+2. Fix before release: major functional defects and high-risk issues.
+3. Fix next: medium-severity defects and workflow improvements.
+4. Improve later: low-severity and optional enhancements.
+
+Include dependencies and retesting requirements.
+
+### K. Final Release Checklist
+
+Provide a checklist for:
+- Core workflows.
+- Authentication and permissions.
+- Input validation.
+- Database integrity.
+- Algorithm correctness.
+- API reliability.
+- Security.
+- Responsive design.
+- Accessibility.
+- Performance.
+- Automated tests.
+- Deployment configuration.
+- Backups and recovery.
+- Final regression testing.
+
+## 18. FIXING BUGS: STRICT APPROVAL RULE
+
+The initial audit must be diagnostic first.
+
+Do not automatically rewrite the entire project or make broad architectural changes.
+
+First produce the report and explain the proposed fixes.
+
+If modification is authorized, fix issues in priority order and follow these rules:
+
+- Make the smallest safe change that solves the confirmed issue.
+- Preserve existing business requirements and working functionality.
+- Do not remove features to hide failures.
+- Do not hardcode data to simulate success.
+- Do not change database schemas without documenting the reason and migration impact.
+- Add or update regression tests for each fix.
+- Run relevant tests after every meaningful change.
+- Run the full available test suite after the fixes.
+- Compare the new behavior against the baseline.
+- Document unresolved issues and any regressions.
+- Maintain a clear record of modified files.
+
+If approval for changes has not been granted, deliver the report and proposed patches or code examples without silently modifying the application.
+
+## 19. FINAL DELIVERY REQUIREMENTS
+
+Deliver the following artifacts when supported by the available tools:
+
+1. `WEBSITE_AUDIT_REPORT.md` — Full audit report.
+2. `TEST_CASES.md` — Detailed functional and edge-case test cases.
+3. `FIELD_VALIDATION_REPORT.md` — Field-by-field validation findings.
+4. `ALGORITHM_AUDIT.md` — Algorithm and calculation verification.
+5. `SECURITY_AUDIT.md` — Security findings and remediation.
+6. Automated test files for the existing test framework, where appropriate and authorized.
+7. `FIX_PLAN.md` — Prioritized action plan.
+
+Avoid duplicating the same findings unnecessarily across reports. Link related findings by their Bug IDs.
+
+If the environment supports file creation, create the actual files. Otherwise, provide their complete contents in the response.
+
+## 20. FINAL INSTRUCTION
+
+Start by examining the actual project files and determining the real technology stack.
+
+Do not guess how the website works. Do not invent bugs, test results, routes, requirements, or performance measurements.
+
+Inspect, test, reproduce, document, and verify.
+
+Your final goal is to give me a clear answer to five questions:
+
+1. What is working correctly?
+2. What is broken or risky?
+3. How can I reproduce each confirmed issue?
+4. Exactly what should I change to fix it?
+5. What evidence proves that the website is ready—or not ready—for release?
+
+Begin with the project discovery phase and produce the audit plan before making any code changes.

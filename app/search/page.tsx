@@ -50,19 +50,140 @@ function SearchContent() {
   const [maxPrice, setMaxPrice] = useState(5000);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const [allCooks, setAllCooks] = useState<any[]>(COOKS);
+
+  // Dynamically load registered cooks from localStorage, active profile, and API
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      let localCooks: any[] = [];
+
+      // 1. From hf_registered_cooks
+      try {
+        const stored = localStorage.getItem("hf_registered_cooks");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) localCooks.push(...parsed);
+        }
+      } catch {}
+
+      // 2. From hf_cook_profile (if user registered their kitchen)
+      try {
+        const activeProfile = localStorage.getItem("hf_cook_profile");
+        if (activeProfile) {
+          const p = JSON.parse(activeProfile);
+          if (p.shopName && !localCooks.some((c) => c.kitchenName?.toLowerCase() === p.shopName.toLowerCase())) {
+            const cookId = `c_${(p.headCook || "cook").toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+            localCooks.push({
+              id: cookId,
+              kitchenName: p.shopName,
+              name: p.headCook || "Home Cook",
+              bio: p.bio || `Fresh homemade meals cooked with hygiene by Chef ${p.headCook || "Cook"}.`,
+              coverImage: "https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=800&q=80",
+              avatar: "https://randomuser.me/api/portraits/men/33.jpg",
+              fssaiNo: p.fssaiNumber || "10020042007891",
+              cuisines: p.pureVeg ? ["gujarati", "kathiyawadi", "jain"] : ["gujarati", "punjabi"],
+              city: p.city || "Rajkot",
+              area: p.address || `${p.city || "Rajkot"}`,
+              pincode: "360005",
+              rating: 4.9,
+              totalReviews: 12,
+              deliverySlots: [p.lunchSlot || "Lunch (12–1:30 PM)", p.dinnerSlot || "Dinner (7:30–9 PM)"],
+              serviceAreas: p.serviceAreas || ["Kalavad Road", "University Road", "150 Feet Ring Road"],
+              status: "approved",
+              isVeg: p.pureVeg !== undefined ? p.pureVeg : true,
+              totalOrders: 65,
+              responseTime: "Under 25 min",
+              memberSince: "2024",
+              plans: [
+                { id: `p_${cookId}_daily`, type: "daily", label: "Daily Kathiyawadi Plan", price: 120, perMeal: 120, description: "Daily fresh homemade tiffin.", includes: ["1 Sabzi", "Dal/Kadhi", "4 Phulkas", "Rice"] },
+                { id: `p_${cookId}_weekly`, type: "weekly", label: "Weekly Saver Plan", price: 749, perMeal: 107, description: "7-day variety plan with Sunday sweet special.", includes: ["Sabzi", "Dal/Kadhi", "Rotis", "Rice", "Sweet"], popular: true },
+                { id: `p_${cookId}_monthly`, type: "monthly", label: "Monthly Royal Plan", price: 2799, perMeal: 93, description: "30-day meal plan. Pause anytime.", includes: ["Full Thali", "Special Sundays", "5 Skips"] },
+              ],
+              weeklyMenu: {
+                Monday: ["Sev Tameta Nu Shaak", "Bhindi Masala", "Phulka Rotis", "Gujarati Kadhi", "Jeera Rice"],
+                Tuesday: ["Kathiyawadi Ringan No Olo", "Bajra No Rotlo with Makhan", "Desi Kadhi", "Vaghareli Khichdi"],
+                Wednesday: ["Surti Undhiyu", "Puri / Phulkas", "Dal Fry", "Vegetable Pulao", "Jalebi (2 pcs)"],
+                Thursday: ["Gatta Nu Shaak", "Aloo Gobi Matar", "Phulka Rotis", "Toor Dal Fry", "Steamed Rice"],
+                Friday: ["Lasaniya Batata", "Gujarati Bhakri", "Desi Chhach", "Plain Khichdi", "Garlic Chutney"],
+                Saturday: ["Chole Masala", "Bhature / Phulkas", "Dal Tadka", "Peas Pulao", "Sweet Lassi"],
+                Sunday: ["Royal Kathiyawadi Thali", "Bajra Rotlo", "Special Dal", "Basundi with Dry Fruits"],
+              },
+            });
+          }
+        }
+      } catch {}
+
+      // 3. Fetch from /api/v1/cooks to get server-persisted cooks
+      fetch("/api/v1/cooks")
+        .then((res) => res.json())
+        .then((data) => {
+          const serverCooks = data.success && Array.isArray(data.data) ? data.data : [];
+          const combined = [...localCooks, ...serverCooks, ...COOKS];
+          const seen: Record<string, boolean> = {};
+          const uniqueList: any[] = [];
+          for (const c of combined) {
+            const key = (c.id || c.kitchenName || "").toLowerCase();
+            if (key && !seen[key]) {
+              seen[key] = true;
+              uniqueList.push(c);
+            }
+          }
+          setAllCooks(uniqueList);
+        })
+        .catch(() => {
+          const combined = [...localCooks, ...COOKS];
+          const seen: Record<string, boolean> = {};
+          const uniqueList: any[] = [];
+          for (const c of combined) {
+            const key = (c.id || c.kitchenName || "").toLowerCase();
+            if (key && !seen[key]) {
+              seen[key] = true;
+              uniqueList.push(c);
+            }
+          }
+          setAllCooks(uniqueList);
+        });
+    }
+  }, []);
 
   // Filter cooks
-  const filtered = COOKS.filter((c) => {
-    if (selectedCity && c.city.toLowerCase() !== CITIES.find((x) => x.id === selectedCity)?.name.toLowerCase()) return false;
+  const filtered = allCooks.filter((c) => {
+    if (selectedCity) {
+      const qCity = selectedCity.trim().toLowerCase();
+      const matchedCity = CITIES.find((x) => x.id.toLowerCase() === qCity || x.name.toLowerCase() === qCity);
+      const targetCityName = matchedCity ? matchedCity.name.toLowerCase() : qCity;
+      if (c.city?.toLowerCase() !== targetCityName) return false;
+    }
     if (mealType === "veg" && !c.isVeg) return false;
     if (mealType === "nonveg" && c.isVeg) return false;
-    if (selectedCuisine && !c.cuisines.includes(selectedCuisine)) return false;
-    if (query && !c.kitchenName.toLowerCase().includes(query.toLowerCase()) && !c.name.toLowerCase().includes(query.toLowerCase())) return false;
+    if (mealType === "jain" && !c.cuisines?.includes("jain")) return false;
+    if (selectedCuisine && !c.cuisines?.includes(selectedCuisine)) return false;
+    if (planType && planType !== "all") {
+      const hasPlan = c.plans?.some((p: any) => p.type?.toLowerCase() === planType.toLowerCase());
+      if (!hasPlan) return false;
+    }
+    if (maxPrice && maxPrice < 5000) {
+      const minPlanPrice = c.plans && c.plans.length > 0 ? Math.min(...c.plans.map((p: any) => p.price)) : 120;
+      if (minPlanPrice > maxPrice) return false;
+    }
+    if (query) {
+      const q = query.trim().toLowerCase();
+      const matchesKitchen = c.kitchenName?.toLowerCase().includes(q);
+      const matchesCook = c.name?.toLowerCase().includes(q);
+      const matchesArea = c.area?.toLowerCase().includes(q);
+      const matchesCity = c.city?.toLowerCase().includes(q);
+      const matchesCuisine = Array.isArray(c.cuisines) && c.cuisines.some((cui: string) => cui.toLowerCase().includes(q));
+      if (!matchesKitchen && !matchesCook && !matchesArea && !matchesCity && !matchesCuisine) return false;
+    }
     return true;
   }).sort((a, b) => {
-    if (sortBy === "rating") return b.rating - a.rating;
-    if (sortBy === "price") return a.plans[0].price - b.plans[0].price;
-    if (sortBy === "reviews") return b.totalReviews - a.totalReviews;
+    if (sortBy === "rating") return (b.rating || 0) - (a.rating || 0);
+    if (sortBy === "price") {
+      const minA = a.plans && a.plans.length > 0 ? Math.min(...a.plans.map((p: any) => p.price)) : 120;
+      const minB = b.plans && b.plans.length > 0 ? Math.min(...b.plans.map((p: any) => p.price)) : 120;
+      return minA - minB;
+    }
+    if (sortBy === "reviews") return (b.totalReviews || 0) - (a.totalReviews || 0);
     return 0;
   });
 
@@ -225,9 +346,29 @@ function SearchContent() {
                 </div>
               </div>
 
+              {/* Price Filter */}
+              <div>
+                <p style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--text)", marginBottom: "0.5rem" }}>
+                  Max Price: {maxPrice >= 5000 ? "Any Budget" : `₹${maxPrice}`}
+                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <input
+                    type="range"
+                    min="100"
+                    max="5000"
+                    step="50"
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(Number(e.target.value))}
+                    style={{ width: "140px", accentColor: "var(--primary)" }}
+                    aria-label="Filter by maximum price"
+                  />
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600 }}>₹{maxPrice >= 5000 ? "5000+" : maxPrice}</span>
+                </div>
+              </div>
+
               {/* Clear Filters */}
               <button
-                onClick={() => { setQuery(""); setSelectedCity(""); setMealType("all"); setSelectedCuisine(""); setPlanType("all"); }}
+                onClick={() => { setQuery(""); setSelectedCity(""); setMealType("all"); setSelectedCuisine(""); setPlanType("all"); setMaxPrice(5000); }}
                 className="btn btn-ghost"
                 style={{ alignSelf: "flex-end", color: "var(--danger)" }}
                 id="clear-filters-btn"
@@ -244,7 +385,7 @@ function SearchContent() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
           <h1 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.375rem", color: "var(--text)" }}>
             {filtered.length} Home Cook{filtered.length !== 1 ? "s" : ""} Found
-            {selectedCity && ` in ${CITIES.find((c) => c.id === selectedCity)?.name}`}
+            {selectedCity && ` in ${CITIES.find((c) => c.id.toLowerCase() === selectedCity.toLowerCase() || c.name.toLowerCase() === selectedCity.toLowerCase())?.name || selectedCity}`}
           </h1>
         </div>
 
@@ -255,7 +396,7 @@ function SearchContent() {
             <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>🔍</div>
             <h2 style={{ fontFamily: "Poppins", fontWeight: 700, color: "var(--text)", marginBottom: "0.75rem" }}>No cooks found</h2>
             <p style={{ color: "var(--text-muted)", marginBottom: "1.5rem" }}>Try different filters or a different city.</p>
-            <button onClick={() => { setQuery(""); setSelectedCity(""); setMealType("all"); setSelectedCuisine(""); }} className="btn btn-primary">
+            <button onClick={() => { setQuery(""); setSelectedCity(""); setMealType("all"); setSelectedCuisine(""); setPlanType("all"); setMaxPrice(5000); }} className="btn btn-primary">
               Clear Filters
             </button>
           </div>
@@ -289,7 +430,9 @@ function SearchContent() {
                     </p>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
-                        <span style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.125rem", color: "var(--primary)" }}>₹{Math.min(...cook.plans.map((p) => p.price))}</span>
+                        <span style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.125rem", color: "var(--primary)" }}>
+                          ₹{cook.plans && cook.plans.length > 0 ? Math.min(...cook.plans.map((p: any) => p.price)) : 120}
+                        </span>
                         <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}> onwards/plan</span>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>

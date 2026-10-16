@@ -20,7 +20,7 @@ test.describe("HomeFeast Core User Journey Flow", () => {
 
     // Hero headline
     const heading = page.locator("h1");
-    await expect(heading).toContainText("Maa Ke Haath Ka Khana");
+    await expect(heading).toContainText("Fresh Homemade Meals");
 
     // City and meal search bar
     const searchForm = page.locator("#hero-search-form");

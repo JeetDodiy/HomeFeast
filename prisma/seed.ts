@@ -48,29 +48,32 @@ async function main() {
   console.log("✓ Seeded 5 cuisines");
 
   // 3. Seed Admin
+  const adminPwdHash = "$2b$10$6n2sI5FGHimEHwy25yaAE.SJrE6/RdiPWk1yqBW7vWE0MVq4bXskq"; // bcrypt for 'admin123'
+  const demoPwdHash = "$2b$10$XbxYIRf/hOrULM9QPwEge.nsKPSZPLCFzYys5BWwVVzCOyDYj3KB.";  // bcrypt for 'demo123'
+
   const admin = await prisma.user.upsert({
     where: { email: "admin@homefeast.in" },
-    update: {},
+    update: { passwordHash: adminPwdHash },
     create: {
       name: "Super Admin",
       email: "admin@homefeast.in",
       phone: "9999999999",
-      passwordHash: "$2b$12$e8Y6U7KxPqL9nZJ2b5tTDehL5sM8Q2vN0zR9x1vC4wB3nM5l6k7j8", // bcrypt hash for 'admin123'
+      passwordHash: adminPwdHash,
       role: Role.ADMIN,
       cityId: rajkot.id,
       isVerified: true,
     },
   });
 
-  // 4. Seed Customers
-  const customer1 = await prisma.user.upsert({
-    where: { email: "arjun.verma@example.com" },
-    update: {},
+  // 4. Seed Customers (including demo@customer.com)
+  const demoCustomer = await prisma.user.upsert({
+    where: { email: "demo@customer.com" },
+    update: { passwordHash: demoPwdHash },
     create: {
-      name: "Arjun Verma",
-      email: "arjun.verma@example.com",
+      name: "Priya Sharma",
+      email: "demo@customer.com",
       phone: "9876543210",
-      passwordHash: "$2b$12$e8Y6U7KxPqL9nZJ2b5tTDehL5sM8Q2vN0zR9x1vC4wB3nM5l6k7j8",
+      passwordHash: demoPwdHash,
       role: Role.CUSTOMER,
       cityId: rajkot.id,
       address: "Flat 402, Royal Residency, Race Course, Rajkot",
@@ -79,41 +82,54 @@ async function main() {
     },
   });
 
-  const customer2 = await prisma.user.upsert({
-    where: { email: "kavya.reddy@example.com" },
+  const customer1 = await prisma.user.upsert({
+    where: { email: "arjun.verma@example.com" },
     update: {},
     create: {
-      name: "Kavya Reddy",
-      email: "kavya.reddy@example.com",
-      phone: "9876543211",
-      passwordHash: "$2b$12$e8Y6U7KxPqL9nZJ2b5tTDehL5sM8Q2vN0zR9x1vC4wB3nM5l6k7j8",
-      role: Role.CUSTOMER,
-      cityId: ahmedabad.id,
-      address: "Room 12, Girls Hostel, Navrangpura, Ahmedabad",
-      pincode: "380009",
-      isVerified: true,
-    },
-  });
-
-  const customer3 = await prisma.user.upsert({
-    where: { email: "mahesh.iyer@example.com" },
-    update: {},
-    create: {
-      name: "Mahesh Iyer",
-      email: "mahesh.iyer@example.com",
-      phone: "9876543212",
-      passwordHash: "$2b$12$e8Y6U7KxPqL9nZJ2b5tTDehL5sM8Q2vN0zR9x1vC4wB3nM5l6k7j8",
+      name: "Arjun Verma",
+      email: "arjun.verma@example.com",
+      phone: "9825123456",
+      passwordHash: "$2b$10$1V5UqC1l6fGfT8fO3c1F9O5W/e/yY7P6A9vG.X/T0H0W0V0V0V0V0",
       role: Role.CUSTOMER,
       cityId: rajkot.id,
-      address: "A-101, Anand Society, Kalavad Road, Rajkot",
+      address: "B-202, Radhika Heights, Kalavad Road, Rajkot",
       pincode: "360005",
       isVerified: true,
     },
   });
-  console.log("✓ Seeded 3 customers + 1 admin");
 
-  // 5. Seed 12 Home Cooks & Kitchens
+  console.log("✓ Seeded demo customer & admin");
+
+  // 5. Seed Home Cooks & Kitchens (including demo@cook.com and Jeet's Kitchen)
   const cooksData = [
+    {
+      name: "Jeet Dodiya",
+      kitchen: "Jeet's Kitchen",
+      email: "jeet@homefeast.in",
+      phone: "9876500000",
+      city: rajkot.id,
+      area: "Kalavad Road",
+      pincode: "360005",
+      isVeg: true,
+      cuisines: ["Gujarati", "Kathiyawadi"],
+      fssai: "10020042007891",
+      rating: 4.9,
+      reviews: 184,
+    },
+    {
+      name: "Meenaben Patel",
+      kitchen: "Meenaben's Kitchen",
+      email: "demo@cook.com",
+      phone: "9825012345",
+      city: rajkot.id,
+      area: "Race Course",
+      pincode: "360001",
+      isVeg: true,
+      cuisines: ["Gujarati", "Jain"],
+      fssai: "10020042003854",
+      rating: 4.9,
+      reviews: 142,
+    },
     {
       name: "Meera Patel",
       kitchen: "Meera's Kitchen",
@@ -287,12 +303,12 @@ async function main() {
   for (const c of cooksData) {
     const cookUser = await prisma.user.upsert({
       where: { email: c.email },
-      update: {},
+      update: { passwordHash: demoPwdHash },
       create: {
         name: c.name,
         email: c.email,
         phone: c.phone,
-        passwordHash: "$2b$12$e8Y6U7KxPqL9nZJ2b5tTDehL5sM8Q2vN0zR9x1vC4wB3nM5l6k7j8",
+        passwordHash: demoPwdHash,
         role: Role.COOK,
         cityId: c.city,
         address: `${c.area}, Pincode: ${c.pincode}`,

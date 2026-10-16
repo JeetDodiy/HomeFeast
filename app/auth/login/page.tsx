@@ -7,7 +7,7 @@ import { Eye, EyeOff, ChefHat, Mail, Lock, User, ArrowRight } from "lucide-react
 export default function LoginPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const [form, setForm] = useState({ email: "demo@cook.com", password: "password123" });
+  const [form, setForm] = useState({ email: "demo@cook.com", password: "demo123" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"customer" | "cook" | "admin">("cook");
@@ -37,17 +37,20 @@ export default function LoginPage() {
 
       if (data.success) {
         if (typeof window !== "undefined") {
+          const userRole = (data.user?.role || activeTab).toLowerCase();
           localStorage.setItem("hf_token", data.token || "hf_session_token");
-          localStorage.setItem("hf_user", JSON.stringify(data.user || { email: form.email, role: activeTab }));
-        }
-
-        // Navigate directly to the corresponding authenticated dashboard
-        if (activeTab === "cook") {
-          router.push("/cook/dashboard");
-        } else if (activeTab === "admin") {
-          router.push("/admin/dashboard");
-        } else {
-          router.push("/customer/dashboard");
+          localStorage.setItem("hf_user", JSON.stringify(data.user || { email: form.email, role: userRole }));
+          
+          // Set client cookies for middleware synchronization
+          document.cookie = `hf_token=${data.token || "hf_session_token"}; path=/; max-age=604800; SameSite=Lax`;
+          document.cookie = `hf_role=${userRole}; path=/; max-age=604800; SameSite=Lax`;
+          
+          window.dispatchEvent(new Event("auth-state-changed"));
+          
+          // Redirect strictly according to authenticated account role
+          const target = userRole === "cook" ? "/cook/dashboard" : userRole === "admin" ? "/admin/dashboard" : "/customer/dashboard";
+          window.location.href = target;
+          return;
         }
       } else {
         setError(data.error || "Authentication failed. Please check your credentials.");

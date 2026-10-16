@@ -24,15 +24,15 @@ const COOK_SIDEBAR = [
 
 // Default initial data structures
 const DEFAULT_PROFILE = {
-  shopName: "Meera's Kathiyawadi Kitchen",
-  headCook: "Meenaben Patel",
+  shopName: "My Home Kitchen",
+  headCook: "Home Cook",
   phone: "+91 98765 43210",
-  email: "meera@homefeast.in",
-  bio: "Authentic homemade Kathiyawadi & Gujarati thalis made with cold-pressed groundnut oil, Desi Ghee phulkas, and fresh seasonal vegetables.",
+  email: "cook@homefeast.in",
+  bio: "Authentic homemade meals made with fresh ingredients, pure spices, and traditional recipes delivered daily.",
   fssaiNumber: "10020042003854",
   fssaiVerified: true,
   city: "Rajkot",
-  address: "302, Silicon Hub, Race Course Road",
+  address: "Race Course Road",
   serviceAreas: ["Race Course", "Kalavad Road", "Mavdi", "150ft Ring Road", "University Road"],
   deliveryRadiusKm: 5,
   isOpen: true,
@@ -42,7 +42,7 @@ const DEFAULT_PROFILE = {
   bankName: "State Bank of India",
   bankAccount: "•••• •••• 4892",
   bankIfsc: "SBIN0001234",
-  bankHolder: "Meenaben Patel",
+  bankHolder: "Home Cook",
 };
 
 const DEFAULT_MENU = [
@@ -145,6 +145,8 @@ export default function CookDashboardPage() {
   const [subscribers, setSubscribers] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [mounted, setMounted] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // UI state
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
@@ -163,6 +165,20 @@ export default function CookDashboardPage() {
   // Edit Plan Modal
   const [showEditPlanModal, setShowEditPlanModal] = useState(false);
   const [editingPlan, setEditingPlan] = useState<any | null>(null);
+
+  // Add Plan Modal
+  const [showAddPlanModal, setShowAddPlanModal] = useState(false);
+  const [newPlan, setNewPlan] = useState({
+    name: "",
+    badge: "Custom",
+    price: 999,
+    billingCycle: "14 days",
+    mealsIncluded: 14,
+    description: "",
+    pauseAllowedDays: 2,
+    deliverySlots: ["Lunch (12–1:30 PM)", "Dinner (7:30–9 PM)"],
+    active: true,
+  });
 
   // Add Subscriber Modal
   const [showAddSubscriberModal, setShowAddSubscriberModal] = useState(false);
@@ -190,24 +206,54 @@ export default function CookDashboardPage() {
       }
 
       // Check current user from login
+      let activeUser: any = null;
       try {
         const storedUser = localStorage.getItem("hf_user");
         if (storedUser) {
-          const u = JSON.parse(storedUser);
-          if (u.name) {
-            setProfile(prev => ({
-              ...prev,
-              headCook: u.name,
-              shopName: prev.shopName.includes("Meera") ? `${u.name.split(" ")[0]}'s Kitchen` : prev.shopName
-            }));
-          }
+          activeUser = JSON.parse(storedUser);
+          setIsAuthenticated(true);
+        } else {
+          setIsAuthenticated(false);
         }
-      } catch {}
+      } catch {
+        setIsAuthenticated(false);
+      } finally {
+        setAuthChecked(true);
+      }
+
+      const isDemoAccount = activeUser?.email === "demo@cook.com";
+      const cookChefName = activeUser?.name || "Home Cook";
+      const cookKitchenName = activeUser?.kitchenName || (cookChefName.toLowerCase().includes("patel") || cookChefName.toLowerCase().includes("meena") ? `${cookChefName}'s Kitchen` : `${cookChefName.split(" ")[0]}'s Kitchen`);
 
       // Load Profile
       try {
         const storedProfile = localStorage.getItem("hf_cook_profile");
-        if (storedProfile) setProfile(JSON.parse(storedProfile));
+        if (storedProfile) {
+          const parsed = JSON.parse(storedProfile);
+          // Purge demo cook names ("Meenaben Patel", "Meenaben's Kitchen", "Meera") if user is a real custom cook
+          if (!isDemoAccount && (parsed.headCook === "Meenaben Patel" || parsed.shopName.includes("Meena") || parsed.shopName.includes("Meera") || parsed.headCook !== cookChefName)) {
+            parsed.headCook = cookChefName;
+            parsed.shopName = cookKitchenName;
+            parsed.bankHolder = cookChefName;
+            if (activeUser?.email) parsed.email = activeUser.email;
+            if (activeUser?.city) parsed.city = activeUser.city;
+            setProfile(parsed);
+            localStorage.setItem("hf_cook_profile", JSON.stringify(parsed));
+          } else {
+            setProfile(parsed);
+          }
+        } else {
+          const initialProfile = {
+            ...DEFAULT_PROFILE,
+            headCook: cookChefName,
+            shopName: cookKitchenName,
+            bankHolder: cookChefName,
+            email: activeUser?.email || "cook@homefeast.in",
+            city: activeUser?.city || "Rajkot",
+          };
+          setProfile(initialProfile);
+          localStorage.setItem("hf_cook_profile", JSON.stringify(initialProfile));
+        }
       } catch {}
 
       // Load Menu
@@ -228,21 +274,89 @@ export default function CookDashboardPage() {
         if (storedPlans) setPlans(JSON.parse(storedPlans));
       } catch {}
 
-      // Load Subscribers
+      // Load Subscribers from localStorage and live API
       try {
         const storedSubscribers = localStorage.getItem("hf_cook_subscribers");
         if (storedSubscribers) {
-          setSubscribers(JSON.parse(storedSubscribers));
+          const parsedSubs = JSON.parse(storedSubscribers);
+          if (!isDemoAccount) {
+            const cleanSubs = parsedSubs.filter((s: any) => !(s.name === "Arjun Verma" && s.phone === "+91 98251 23456"));
+            setSubscribers(cleanSubs);
+          } else {
+            setSubscribers(parsedSubs);
+          }
         }
       } catch {}
 
-      // Load Orders
+      // Load Orders from localStorage and live API
       try {
         const storedOrders = localStorage.getItem("hf_cook_orders");
         if (storedOrders) {
-          setOrders(JSON.parse(storedOrders));
+          const parsedOrders = JSON.parse(storedOrders);
+          if (!isDemoAccount) {
+            const cleanOrders = parsedOrders.filter((o: any) => !(o.customer === "Arjun Verma" && o.phone === "+91 98251 23456"));
+            setOrders(cleanOrders);
+          } else {
+            setOrders(parsedOrders);
+          }
         }
       } catch {}
+
+      // Live Backend API Query: Connect orders across browsers & devices
+      const userKitchen = activeUser?.kitchenName || "Meenaben's Kitchen";
+      const targetCookId = activeUser?.cookId || (isDemoAccount ? "c1" : `c_${(activeUser?.name || "cook").toLowerCase().replace(/[^a-z0-9]/g, "_")}`);
+
+      fetch(`/api/v1/orders?cookId=${encodeURIComponent(targetCookId)}`)
+        .then((res) => res.json())
+        .then((orderData) => {
+          if (orderData.success && Array.isArray(orderData.data) && orderData.data.length > 0) {
+            const formatted = orderData.data.map((o: any) => ({
+              id: o.id,
+              customer: o.customer || o.customerName || "Customer",
+              phone: o.phone || "+91 98251 00000",
+              plan: o.plan || o.planName || "Weekly Saver Plan",
+              slot: o.slot || o.mealSlot || "Lunch (12–1:30 PM)",
+              address: o.address || o.deliveryAddress || "Home delivery",
+              status: o.status || "CONFIRMED",
+              packedItems: o.packedItems || { sabzi: false, rotis: false, dal: false, rice: false },
+              items: o.items || ["Daily Gujarati Thali", "Phulka Roti", "Dal/Kadhi", "Sabzi", "Rice"],
+            }));
+            setOrders((prev) => {
+              const prevIds = new Set(prev.map((p) => p.id));
+              const merged = [...prev, ...formatted.filter((f: any) => !prevIds.has(f.id))];
+              if (typeof window !== "undefined") localStorage.setItem("hf_cook_orders", JSON.stringify(merged));
+              return merged;
+            });
+          }
+        })
+        .catch(() => {});
+
+      fetch(`/api/v1/subscriptions?cookId=${encodeURIComponent(targetCookId)}`)
+        .then((res) => res.json())
+        .then((subJson) => {
+          if (subJson.success && Array.isArray(subJson.data) && subJson.data.length > 0) {
+            const formattedSubs = subJson.data.map((s: any) => ({
+              id: s.id,
+              name: s.name || s.customerName || "Customer",
+              phone: s.phone || "",
+              plan: s.plan || s.planName || "Weekly Saver Plan (7 Days)",
+              slot: s.slot || "Lunch (12–1:30 PM)",
+              address: s.address || s.deliveryAddress || "Home delivery",
+              startDate: s.startDate || "2026-10-14",
+              remainingMeals: s.remainingMeals ?? s.totalMeals ?? 7,
+              totalMeals: s.totalMeals ?? 7,
+              dietPreference: s.dietPreference || "Standard pure veg",
+              status: s.status || "ACTIVE",
+            }));
+            setSubscribers((prev) => {
+              const prevIds = new Set(prev.map((p) => p.id));
+              const merged = [...prev, ...formattedSubs.filter((f: any) => !prevIds.has(f.id))];
+              if (typeof window !== "undefined") localStorage.setItem("hf_cook_subscribers", JSON.stringify(merged));
+              return merged;
+            });
+          }
+        })
+        .catch(() => {});
     }
   }, []);
 
@@ -261,6 +375,47 @@ export default function CookDashboardPage() {
           localStorage.setItem("hf_user", JSON.stringify(userObj));
         }
       } catch {}
+
+      // Sync into public registered cooks registry and server API
+      try {
+        const existingRegistered = JSON.parse(localStorage.getItem("hf_registered_cooks") || "[]");
+        const cookId = `c_${profile.headCook.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+        const updatedRecord = {
+          id: cookId,
+          kitchenName: profile.shopName,
+          name: profile.headCook,
+          bio: profile.bio,
+          city: profile.city || "Rajkot",
+          area: profile.address || `${profile.city || "Rajkot"}`,
+          pincode: "360005",
+          rating: 4.9,
+          totalReviews: 24,
+          totalOrders: 180,
+          cuisines: profile.pureVeg ? ["gujarati", "kathiyawadi", "jain"] : ["gujarati", "punjabi"],
+          deliverySlots: [profile.lunchSlot || "Lunch (12–1:30 PM)", profile.dinnerSlot || "Dinner (7:30–9 PM)"],
+          serviceAreas: profile.serviceAreas || ["Kalavad Road", "University Road"],
+          status: "approved",
+          isVeg: profile.pureVeg !== undefined ? profile.pureVeg : true,
+          plans: plans.map((p, idx) => ({
+            id: p.id || `p_${idx}`,
+            type: p.billingCycle?.toLowerCase().includes("month") ? "monthly" : p.billingCycle?.toLowerCase().includes("week") ? "weekly" : "daily",
+            label: p.name,
+            price: p.price,
+            perMeal: Math.round(p.price / (p.mealsIncluded || 1)),
+            description: p.description,
+            includes: ["Full Thali Meal", "Dal/Kadhi", "Sabzi", "Rotis", "Rice"],
+            popular: idx === 1,
+          })),
+        };
+        const filteredList = existingRegistered.filter((c: any) => c.kitchenName !== profile.shopName && c.id !== cookId);
+        localStorage.setItem("hf_registered_cooks", JSON.stringify([updatedRecord, ...filteredList]));
+
+        fetch("/api/v1/cooks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatedRecord),
+        }).catch(() => {});
+      } catch {}
     }
     showToast("Shop profile & kitchen settings saved successfully!");
   };
@@ -277,16 +432,21 @@ export default function CookDashboardPage() {
   // Menu Handlers
   const handleAddDish = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newDish.name.trim()) return;
+    const cleanName = newDish.name.trim();
+    if (cleanName.length < 2) {
+      showToast("Dish name must be at least 2 characters long.");
+      return;
+    }
+    const safePrice = Math.max(1, Math.min(1000, Number(newDish.price) || 40));
     const dish = {
       id: `dish_${Date.now()}`,
-      name: newDish.name.trim(),
+      name: cleanName,
       category: newDish.category,
       type: newDish.type,
-      price: Number(newDish.price) || 40,
+      price: safePrice,
       available: true,
       mealTime: newDish.mealTime,
-      desc: newDish.desc.trim() || `${newDish.name} made fresh daily.`,
+      desc: newDish.desc.trim() || `${cleanName} made fresh daily.`,
     };
     const updated = [dish, ...menuItems];
     setMenuItems(updated);
@@ -345,6 +505,46 @@ export default function CookDashboardPage() {
     if (typeof window !== "undefined") localStorage.setItem("hf_cook_plans", JSON.stringify(updated));
     setShowEditPlanModal(false);
     showToast(`Saved settings for ${editingPlan.name}!`);
+  };
+
+  const handleAddPlan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPlan.name.trim()) return;
+    const plan = {
+      ...newPlan,
+      id: `p_${Date.now()}`,
+      name: newPlan.name.trim(),
+      price: Number(newPlan.price) || 120,
+      mealsIncluded: Number(newPlan.mealsIncluded) || 1,
+      pauseAllowedDays: Number(newPlan.pauseAllowedDays) || 0,
+      description: newPlan.description.trim() || `${newPlan.name.trim()} homemade tiffin plan.`,
+      deliverySlots: newPlan.deliverySlots.length > 0 ? newPlan.deliverySlots : ["Lunch (12–1:30 PM)"],
+      active: true,
+    };
+    const updated = [...plans, plan];
+    setPlans(updated);
+    if (typeof window !== "undefined") localStorage.setItem("hf_cook_plans", JSON.stringify(updated));
+    setShowAddPlanModal(false);
+    setNewPlan({
+      name: "",
+      badge: "Custom",
+      price: 999,
+      billingCycle: "14 days",
+      mealsIncluded: 14,
+      description: "",
+      pauseAllowedDays: 2,
+      deliverySlots: ["Lunch (12–1:30 PM)", "Dinner (7:30–9 PM)"],
+      active: true,
+    });
+    showToast(`Added custom plan "${plan.name}"!`);
+  };
+
+  const handleDeletePlan = (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to remove plan "${name}"?`)) return;
+    const updated = plans.filter(p => p.id !== id);
+    setPlans(updated);
+    if (typeof window !== "undefined") localStorage.setItem("hf_cook_plans", JSON.stringify(updated));
+    showToast(`Removed plan "${name}".`);
   };
 
   // Subscriber Handlers
@@ -453,21 +653,35 @@ export default function CookDashboardPage() {
     setOrders(updated);
     if (typeof window !== "undefined") localStorage.setItem("hf_cook_orders", JSON.stringify(updated));
     showToast(`Order status updated to: ${newStatus.replace(/_/g, " ")}`);
+
+    fetch("/api/v1/orders", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status: newStatus }),
+    }).catch(() => {});
   };
 
   const togglePackItem = (orderId: string, itemKey: string) => {
+    let targetPacked: any = {};
     const updated = orders.map(o => {
       if (o.id === orderId) {
         const currentPacked = o.packedItems || {};
+        targetPacked = { ...currentPacked, [itemKey]: !currentPacked[itemKey] };
         return {
           ...o,
-          packedItems: { ...currentPacked, [itemKey]: !currentPacked[itemKey] }
+          packedItems: targetPacked,
         };
       }
       return o;
     });
     setOrders(updated);
     if (typeof window !== "undefined") localStorage.setItem("hf_cook_orders", JSON.stringify(updated));
+
+    fetch("/api/v1/orders", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: orderId, packedItems: targetPacked }),
+    }).catch(() => {});
   };
 
   const clearDeliveredOrders = () => {
@@ -478,10 +692,47 @@ export default function CookDashboardPage() {
   };
 
   // Earnings calculations
-  const totalSubscribersCount = subscribers.filter(s => s.status === "ACTIVE").length;
-  const calculatedGrossRevenue = (totalSubscribersCount * 2200) + (orders.length * 120) || 23800;
+  const activeSubscribersList = subscribers.filter((s) => s.status === "ACTIVE");
+  const totalSubscribersCount = activeSubscribersList.length;
+
+  const subsRevenue = activeSubscribersList.reduce((sum, s) => {
+    const price = Number(s.planPrice) || (s.plan?.toLowerCase().includes("month") ? 2799 : s.plan?.toLowerCase().includes("week") ? 749 : 120);
+    return sum + price;
+  }, 0);
+
+  const ordersRevenue = orders
+    .filter((o) => o.status === "DELIVERED" || o.status === "CONFIRMED")
+    .reduce((sum, o) => sum + (Number(o.amount) || Number(o.totalAmount) || 120), 0);
+
+  const calculatedGrossRevenue = subsRevenue + ordersRevenue;
   const commission = Math.round(calculatedGrossRevenue * 0.10);
   const netEarnings = calculatedGrossRevenue - commission;
+
+  if (mounted && authChecked && !isAuthenticated) {
+    return (
+      <div style={{ minHeight: "85vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem 1rem", background: "var(--bg)" }}>
+        <div className="card" style={{ maxWidth: 520, width: "100%", padding: "2.5rem", textAlign: "center", border: "1.5px solid var(--border)" }}>
+          <div style={{ width: 68, height: 68, borderRadius: "50%", background: "rgba(232, 85, 7, 0.12)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.25rem" }}>
+            <ChefHat size={36} />
+          </div>
+          <h2 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.6rem", color: "var(--text)", marginBottom: "0.5rem" }}>
+            Cook Portal Sign In Required
+          </h2>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.9375rem", lineHeight: 1.6, marginBottom: "1.75rem" }}>
+            You are currently visiting as a guest. Please sign in to your verified Home Cook account to access your kitchen profile, menu catalog, week-wise rotating meal schedule, and live dispatch orders.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            <Link href="/auth/login" className="btn btn-primary" style={{ width: "100%", justifyContent: "center", padding: "0.875rem" }}>
+              Sign In to Cook Account
+            </Link>
+            <Link href="/" className="btn btn-ghost" style={{ width: "100%", justifyContent: "center" }}>
+              Back to Home
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
@@ -532,7 +783,7 @@ export default function CookDashboardPage() {
                 flexShrink: 0,
               }}
             >
-              {profile.headCook.charAt(0) || "M"}
+              {profile.shopName.charAt(0) || profile.headCook.charAt(0) || "K"}
             </div>
             <div style={{ overflow: "hidden" }}>
               <p style={{ fontFamily: "Poppins", fontWeight: 700, color: "var(--text)", margin: 0, fontSize: "0.95rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -897,7 +1148,7 @@ export default function CookDashboardPage() {
                         className="input"
                         value={profile.shopName}
                         onChange={(e) => setProfile({ ...profile, shopName: e.target.value })}
-                        placeholder="e.g. Meera's Kathiyawadi Kitchen"
+                        placeholder="e.g. Maa Ki Rasoi or Royal Kitchen"
                       />
                     </div>
                     <div>
@@ -908,7 +1159,7 @@ export default function CookDashboardPage() {
                         className="input"
                         value={profile.headCook}
                         onChange={(e) => setProfile({ ...profile, headCook: e.target.value })}
-                        placeholder="e.g. Meenaben Patel"
+                        placeholder="e.g. Your Full Name / Head Chef"
                       />
                     </div>
                   </div>
@@ -1707,19 +1958,29 @@ export default function CookDashboardPage() {
         {/* ------------------------------------------------------------- */}
         {activeTab === "plans" && (
           <div>
-            <div style={{ marginBottom: "1.75rem" }}>
-              <h2 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.5rem", color: "var(--text)", margin: 0 }}>
-                Plans & Subscription Pricing 💰
-              </h2>
-              <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", margin: "0.25rem 0 0" }}>
-                Configure your daily trial, weekly, and monthly meal subscriptions offered to neighborhood customers.
-              </p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.75rem", flexWrap: "wrap", gap: "1rem" }}>
+              <div>
+                <h2 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.5rem", color: "var(--text)", margin: 0 }}>
+                  Plans & Subscription Pricing 💰
+                </h2>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", margin: "0.25rem 0 0" }}>
+                  Configure your daily trial, weekly, and monthly meal subscriptions offered to neighborhood customers.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddPlanModal(true)}
+                className="btn btn-primary"
+                style={{ fontSize: "0.875rem" }}
+              >
+                <Plus size={16} /> Add New Plan
+              </button>
             </div>
 
             {/* Plans Grid */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem", marginBottom: "2rem" }}>
               {plans.map((p) => {
-                const perMeal = Math.round(p.price / p.mealsIncluded);
+                const perMeal = Math.round(p.price / Math.max(1, p.mealsIncluded));
                 const cookTakeHome = Math.round(p.price * 0.90);
                 return (
                   <div
@@ -1772,21 +2033,151 @@ export default function CookDashboardPage() {
                       </p>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingPlan({ ...p });
-                        setShowEditPlanModal(true);
-                      }}
-                      className="btn btn-outline"
-                      style={{ width: "100%", justifyContent: "center" }}
-                    >
-                      <Edit2 size={14} /> Edit Plan Details & Rates
-                    </button>
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingPlan({ ...p });
+                          setShowEditPlanModal(true);
+                        }}
+                        className="btn btn-outline"
+                        style={{ flex: 1, justifyContent: "center", fontSize: "0.8125rem" }}
+                      >
+                        <Edit2 size={14} /> Edit Plan
+                      </button>
+                      {plans.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePlan(p.id, p.name)}
+                          className="btn btn-ghost"
+                          style={{ color: "var(--danger)", padding: "0.5rem" }}
+                          title="Delete Plan"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
             </div>
+
+            {/* Add Plan Modal */}
+            {showAddPlanModal && (
+              <div
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  background: "rgba(0,0,0,0.6)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 9999,
+                  padding: "1rem",
+                }}
+              >
+                <div className="card" style={{ width: "100%", maxWidth: 480, padding: "2rem" }}>
+                  <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)", marginBottom: "1.25rem" }}>
+                    Create New Subscription Plan
+                  </h3>
+
+                  <form onSubmit={handleAddPlan}>
+                    <div style={{ marginBottom: "1rem" }}>
+                      <label className="label">Plan Name *</label>
+                      <input
+                        type="text"
+                        required
+                        className="input"
+                        placeholder="e.g. 15-Day Executive Lunch Plan"
+                        value={newPlan.name}
+                        onChange={(e) => setNewPlan({ ...newPlan, name: e.target.value })}
+                      />
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                      <div>
+                        <label className="label">Plan Price (₹) *</label>
+                        <input
+                          type="number"
+                          required
+                          min="50"
+                          className="input"
+                          value={newPlan.price}
+                          onChange={(e) => setNewPlan({ ...newPlan, price: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Meals Included *</label>
+                        <input
+                          type="number"
+                          required
+                          min="1"
+                          className="input"
+                          value={newPlan.mealsIncluded}
+                          onChange={(e) => setNewPlan({ ...newPlan, mealsIncluded: Number(e.target.value) })}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                      <div>
+                        <label className="label">Billing Cycle (e.g. 14 days)</label>
+                        <input
+                          type="text"
+                          required
+                          className="input"
+                          value={newPlan.billingCycle}
+                          onChange={(e) => setNewPlan({ ...newPlan, billingCycle: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Max Pause Allowance (Days)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="15"
+                          className="input"
+                          value={newPlan.pauseAllowedDays}
+                          onChange={(e) => setNewPlan({ ...newPlan, pauseAllowedDays: Number(e.target.value) })}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: "1rem" }}>
+                      <label className="label">Plan Badge (Optional)</label>
+                      <input
+                        type="text"
+                        className="input"
+                        placeholder="e.g. Recommended, Saver, Student Special"
+                        value={newPlan.badge}
+                        onChange={(e) => setNewPlan({ ...newPlan, badge: e.target.value })}
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: "1.5rem" }}>
+                      <label className="label">Customer Description</label>
+                      <textarea
+                        rows={2}
+                        className="input"
+                        style={{ background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)", fontFamily: "inherit" }}
+                        placeholder="Describe what items are included in each tiffin box."
+                        value={newPlan.description}
+                        onChange={(e) => setNewPlan({ ...newPlan, description: e.target.value })}
+                      />
+                    </div>
+
+                    <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+                      <button type="button" onClick={() => setShowAddPlanModal(false)} className="btn btn-ghost">
+                        Cancel
+                      </button>
+                      <button type="submit" className="btn btn-primary">
+                        Add Plan to Kitchen
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
 
             {/* Edit Plan Modal */}
             {showEditPlanModal && editingPlan && (

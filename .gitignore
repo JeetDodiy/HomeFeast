@@ -40,7 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# database backups
+# database backups and local store
 /backups/*.gz
 /backups/*.sql
+/.data/
+
 

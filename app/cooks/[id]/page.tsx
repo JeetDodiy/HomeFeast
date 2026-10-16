@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { notFound, useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -31,14 +31,183 @@ function Stars({ rating, size = 14 }: { rating: number; size?: number }) {
 export default function CookProfilePage() {
   const params = useParams();
   const id = (params?.id as string) || "c1";
-  const cook = COOKS.find((c) => c.id === id);
-  if (!cook) notFound();
 
-  const cookReviews = REVIEWS.filter((r) => r.cookId === cook.id);
+  const [cook, setCook] = useState<any>(() => COOKS.find((c) => c.id === id) || null);
+  const [loading, setLoading] = useState(!cook);
+
+  useEffect(() => {
+    if (cook) return;
+    if (typeof window !== "undefined") {
+      // 1. Check hf_registered_cooks
+      try {
+        const stored = localStorage.getItem("hf_registered_cooks");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const found = parsed.find((c: any) => c.id === id || c.kitchenName?.toLowerCase() === id.toLowerCase());
+          if (found) {
+            setCook(found);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch {}
+
+      // 2. Check active hf_cook_profile
+      try {
+        const activeProfile = localStorage.getItem("hf_cook_profile");
+        if (activeProfile) {
+          const p = JSON.parse(activeProfile);
+          const cookId = `c_${(p.headCook || "cook").toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+          if (cookId === id || p.shopName?.toLowerCase() === id.toLowerCase()) {
+            const synthesized = {
+              id: cookId,
+              kitchenName: p.shopName,
+              name: p.headCook || "Home Cook",
+              bio: p.bio || `Fresh homemade meals cooked with hygiene by Chef ${p.headCook || "Cook"}.`,
+              coverImage: "https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=800&q=80",
+              avatar: "https://randomuser.me/api/portraits/men/33.jpg",
+              fssaiNo: p.fssaiNumber || "10020042007891",
+              cuisines: p.pureVeg ? ["gujarati", "kathiyawadi", "jain"] : ["gujarati", "punjabi"],
+              city: p.city || "Rajkot",
+              area: p.address || `${p.city || "Rajkot"}`,
+              pincode: "360005",
+              rating: 4.9,
+              totalReviews: 12,
+              deliverySlots: [p.lunchSlot || "Lunch (12–1:30 PM)", p.dinnerSlot || "Dinner (7:30–9 PM)"],
+              serviceAreas: p.serviceAreas || ["Kalavad Road", "University Road", "150 Feet Ring Road"],
+              status: "approved",
+              isVeg: p.pureVeg !== undefined ? p.pureVeg : true,
+              totalOrders: 65,
+              responseTime: "Under 25 min",
+              memberSince: "2024",
+              plans: [
+                { id: `p_${cookId}_daily`, type: "daily", label: "Daily Kathiyawadi Plan", price: 120, perMeal: 120, description: "Daily fresh homemade tiffin.", includes: ["1 Sabzi", "Dal/Kadhi", "4 Phulkas", "Rice"] },
+                { id: `p_${cookId}_weekly`, type: "weekly", label: "Weekly Saver Plan", price: 749, perMeal: 107, description: "7-day variety plan with Sunday sweet special.", includes: ["Sabzi", "Dal/Kadhi", "Rotis", "Rice", "Sweet"], popular: true },
+                { id: `p_${cookId}_monthly`, type: "monthly", label: "Monthly Royal Plan", price: 2799, perMeal: 93, description: "30-day meal plan. Pause anytime.", includes: ["Full Thali", "Special Sundays", "5 Skips"] },
+              ],
+              weeklyMenu: {
+                Monday: ["Sev Tameta Nu Shaak", "Bhindi Masala", "Phulka Rotis", "Gujarati Kadhi", "Jeera Rice"],
+                Tuesday: ["Kathiyawadi Ringan No Olo", "Bajra No Rotlo with Makhan", "Desi Kadhi", "Vaghareli Khichdi"],
+                Wednesday: ["Surti Undhiyu", "Puri / Phulkas", "Dal Fry", "Vegetable Pulao", "Jalebi (2 pcs)"],
+                Thursday: ["Gatta Nu Shaak", "Aloo Gobi Matar", "Phulka Rotis", "Toor Dal Fry", "Steamed Rice"],
+                Friday: ["Lasaniya Batata", "Gujarati Bhakri", "Desi Chhach", "Plain Khichdi", "Garlic Chutney"],
+                Saturday: ["Chole Masala", "Bhature / Phulkas", "Dal Tadka", "Peas Pulao", "Sweet Lassi"],
+                Sunday: ["Royal Kathiyawadi Thali", "Bajra Rotlo", "Special Dal", "Basundi with Dry Fruits"],
+              },
+            };
+            setCook(synthesized);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch {}
+
+      // 3. Check /api/v1/cooks
+      fetch("/api/v1/cooks")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && Array.isArray(data.data)) {
+            const found = data.data.find((c: any) => c.id === id || c.kitchenName?.toLowerCase() === id.toLowerCase());
+            if (found) {
+              setCook(found);
+            }
+          }
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [id, cook]);
+
+  const days = cook?.weeklyMenu ? Object.keys(cook.weeklyMenu) : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const cookReviews = cook ? REVIEWS.filter((r) => r.cookId === cook.id) : [];
   const [activeTab, setActiveTab] = useState<"menu" | "plans" | "reviews">("menu");
-  const [selectedDay, setSelectedDay] = useState<string>(Object.keys(cook.weeklyMenu)[0]);
-  const [selectedPlan, setSelectedPlan] = useState<string>(cook.plans.find((p) => p.popular)?.id || cook.plans[0].id);
-  const days = Object.keys(cook.weeklyMenu);
+  const [selectedDay, setSelectedDay] = useState<string>(days[0]);
+  const [selectedPlan, setSelectedPlan] = useState<string>(cook?.plans?.find((p: any) => p.popular)?.id || cook?.plans?.[0]?.id || "p1");
+
+  useEffect(() => {
+    if (cook && (!selectedPlan || selectedPlan === "p1")) {
+      const bestPlan = cook.plans?.find((p: any) => p.popular)?.id || cook.plans?.[0]?.id;
+      if (bestPlan) setSelectedPlan(bestPlan);
+    }
+  }, [cook, selectedPlan]);
+
+  const [isSaved, setIsSaved] = useState(false);
+  const [toastMsg, setToastMsg] = useState("");
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(""), 3500);
+  };
+
+  useEffect(() => {
+    if (cook && typeof window !== "undefined") {
+      try {
+        const saved = JSON.parse(localStorage.getItem("hf_saved_cooks") || "[]");
+        setIsSaved(saved.includes(cook.id));
+      } catch {}
+    }
+  }, [cook]);
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: "80vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)" }}>
+        <div style={{ textAlign: "center" }}>
+          <div className="spinner" style={{ margin: "0 auto 1rem" }} />
+          <p style={{ color: "var(--text-muted)" }}>Loading kitchen profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!cook) {
+    return (
+      <div style={{ minHeight: "80vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)", padding: "2rem" }}>
+        <div className="card" style={{ maxWidth: 480, textAlign: "center", padding: "3rem 2rem" }}>
+          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🍳</div>
+          <h2 style={{ fontFamily: "Poppins", fontWeight: 700, color: "var(--text)", marginBottom: "0.5rem" }}>Kitchen Not Found</h2>
+          <p style={{ color: "var(--text-muted)", marginBottom: "1.5rem" }}>
+            The home kitchen you are looking for may have been updated or moved. Browse all certified kitchens in your area.
+          </p>
+          <Link href="/search" className="btn btn-primary" style={{ display: "inline-flex" }}>
+            Explore Local Cooks
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const handleToggleSave = () => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = JSON.parse(localStorage.getItem("hf_saved_cooks") || "[]");
+        let updated: string[];
+        if (saved.includes(cook.id)) {
+          updated = saved.filter((i: string) => i !== cook.id);
+          setIsSaved(false);
+          showToast(`Removed ${cook.kitchenName} from your saved cooks.`);
+        } else {
+          updated = [...saved, cook.id];
+          setIsSaved(true);
+          showToast(`Saved ${cook.kitchenName} to your favourites!`);
+        }
+        localStorage.setItem("hf_saved_cooks", JSON.stringify(updated));
+      } catch {}
+    }
+  };
+
+  const handleShare = async () => {
+    if (typeof window !== "undefined") {
+      try {
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(window.location.href);
+          showToast("Cook profile link copied to clipboard!");
+        } else {
+          showToast("Profile link: " + window.location.href);
+        }
+      } catch {
+        showToast("Profile link copied!");
+      }
+    }
+  };
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
@@ -56,10 +225,51 @@ export default function CookProfilePage() {
         <img src={cook.coverImage} alt={cook.kitchenName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.7))" }} />
         <div style={{ position: "absolute", top: 16, right: 16, display: "flex", gap: "0.5rem" }}>
-          <button id="save-cook-btn" className="btn btn-ghost" style={{ background: "rgba(255,255,255,0.9)", border: "none", borderRadius: "10px", padding: "0.5rem", width: 40, height: 40 }} aria-label="Save cook">
-            <Heart size={18} />
+          <button
+            id="save-cook-btn"
+            onClick={handleToggleSave}
+            className="btn btn-ghost"
+            style={{
+              background: isSaved ? "var(--primary)" : "rgba(255,255,255,0.9)",
+              color: isSaved ? "#fff" : "var(--text)",
+              border: "none",
+              borderRadius: "10px",
+              padding: "0.5rem",
+              width: 40,
+              height: 40,
+              cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.2s ease",
+            }}
+            aria-label={isSaved ? "Saved to favourites" : "Save cook to favourites"}
+            title={isSaved ? "Saved to favourites" : "Save to favourites"}
+          >
+            <Heart size={18} fill={isSaved ? "currentColor" : "none"} />
           </button>
-          <button className="btn btn-ghost" style={{ background: "rgba(255,255,255,0.9)", border: "none", borderRadius: "10px", padding: "0.5rem", width: 40, height: 40 }} aria-label="Share">
+          <button
+            id="share-cook-btn"
+            onClick={handleShare}
+            className="btn btn-ghost"
+            style={{
+              background: "rgba(255,255,255,0.9)",
+              color: "var(--text)",
+              border: "none",
+              borderRadius: "10px",
+              padding: "0.5rem",
+              width: 40,
+              height: 40,
+              cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            aria-label="Share cook profile"
+            title="Share cook profile"
+          >
             <Share2 size={18} />
           </button>
         </div>
@@ -110,7 +320,7 @@ export default function CookProfilePage() {
 
               {/* Tags */}
               <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "1rem" }}>
-                {cook.cuisines.map((c) => {
+                {cook.cuisines?.map((c: string) => {
                   const cuisine = CUISINES.find((x) => x.id === c);
                   return cuisine ? (
                     <span key={c} className="badge" style={{ background: "var(--surface-alt)", color: "var(--text-muted)" }}>
@@ -119,7 +329,7 @@ export default function CookProfilePage() {
                   ) : null;
                 })}
                 <span className="badge" style={{ background: "rgba(47,125,79,0.1)", color: "var(--secondary)" }}>
-                  <Shield size={11} /> FSSAI #{cook.fssaiNo}
+                  <Shield size={11} /> FSSAI #{cook.fssaiNo || "10020042007891"}
                 </span>
               </div>
             </div>
@@ -127,9 +337,9 @@ export default function CookProfilePage() {
             {/* Info Grid */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem", marginBottom: "1.5rem" }}>
               {[
-                { icon: Clock, label: "Response Time", value: cook.responseTime, color: "var(--info)" },
-                { icon: Calendar, label: "Delivery Slots", value: cook.deliverySlots.join(", "), color: "var(--secondary)" },
-                { icon: MapPin, label: "Service Areas", value: cook.serviceAreas.slice(0, 2).join(", ") + (cook.serviceAreas.length > 2 ? ` +${cook.serviceAreas.length - 2} more` : ""), color: "var(--primary)" },
+                { icon: Clock, label: "Response Time", value: cook.responseTime || "Under 30 min", color: "var(--info)" },
+                { icon: Calendar, label: "Delivery Slots", value: Array.isArray(cook.deliverySlots) ? cook.deliverySlots.join(", ") : "Lunch & Dinner", color: "var(--secondary)" },
+                { icon: MapPin, label: "Service Areas", value: Array.isArray(cook.serviceAreas) ? cook.serviceAreas.slice(0, 2).join(", ") + (cook.serviceAreas.length > 2 ? ` +${cook.serviceAreas.length - 2} more` : "") : (cook.area || "City Wide"), color: "var(--primary)" },
               ].map(({ icon: Icon, label, value, color }) => (
                 <div key={label} className="card" style={{ padding: "1rem" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
@@ -218,7 +428,7 @@ export default function CookProfilePage() {
                 {/* Plans Tab */}
                 {activeTab === "plans" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                    {cook.plans.map((plan) => (
+                    {cook.plans?.map((plan: any) => (
                       <div
                         key={plan.id}
                         className={`plan-card${plan.popular ? " popular" : ""}${selectedPlan === plan.id ? " selected" : ""}`}
@@ -295,7 +505,9 @@ export default function CookProfilePage() {
 
               {/* Selected Plan Info */}
               {(() => {
-                const plan = cook.plans.find((p) => p.id === selectedPlan) || cook.plans[0];
+                const plan = cook.plans?.find((p: any) => p.id === selectedPlan) || cook.plans?.[0] || { label: "Daily Plan", price: 120, perMeal: 120 };
+                const firstSlot = Array.isArray(cook.deliverySlots) && cook.deliverySlots.length > 0 ? cook.deliverySlots[0] : "Lunch (12–1:30 PM)";
+                const firstArea = Array.isArray(cook.serviceAreas) && cook.serviceAreas.length > 0 ? `${cook.serviceAreas[0]} & nearby` : (cook.area || "Neighborhood Delivery");
                 return (
                   <>
                     <div style={{ background: "var(--surface-alt)", borderRadius: "var(--radius-sm)", padding: "1rem", marginBottom: "1.25rem" }}>
@@ -308,9 +520,9 @@ export default function CookProfilePage() {
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.25rem" }}>
                       {[
-                        { label: "Delivery Slots", value: cook.deliverySlots[0] },
-                        { label: "Service Area", value: `${cook.serviceAreas[0]} & nearby` },
-                        { label: "Response Time", value: cook.responseTime },
+                        { label: "Delivery Slots", value: firstSlot },
+                        { label: "Service Area", value: firstArea },
+                        { label: "Response Time", value: cook.responseTime || "Under 30 min" },
                       ].map(({ label, value }) => (
                         <div key={label} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.875rem" }}>
                           <span style={{ color: "var(--text-muted)" }}>{label}</span>
@@ -330,13 +542,18 @@ export default function CookProfilePage() {
               >
                 Subscribe Now
               </Link>
-              <button
+              <a
                 id="contact-cook-btn"
+                href={`https://wa.me/919876543210?text=${encodeURIComponent(
+                  `Hello ${cook.kitchenName}, I found your tiffin service on HomeFeast and would like to ask a few questions before ordering.`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="btn btn-ghost"
-                style={{ width: "100%", justifyContent: "center" }}
+                style={{ width: "100%", justifyContent: "center", textDecoration: "none" }}
               >
-                <Phone size={16} /> Contact Cook
-              </button>
+                <Phone size={16} /> Contact Cook via WhatsApp
+              </a>
 
               <p style={{ textAlign: "center", fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "1rem" }}>
                 🔒 Secure · No hidden charges · Cancel anytime
@@ -345,6 +562,32 @@ export default function CookProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Floating Action Toast */}
+      {toastMsg && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            background: "var(--surface)",
+            color: "var(--text)",
+            border: "1.5px solid var(--border)",
+            padding: "0.75rem 1.25rem",
+            borderRadius: "10px",
+            fontSize: "0.875rem",
+            fontWeight: 600,
+            zIndex: 9999,
+            boxShadow: "var(--shadow-lg)",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+          }}
+        >
+          <CheckCircle size={16} color="var(--secondary)" />
+          {toastMsg}
+        </div>
+      )}
     </div>
   );
 }

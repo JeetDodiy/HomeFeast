@@ -10,6 +10,7 @@ export default function RegisterPage() {
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", confirmPassword: "", city: "" });
   const [ageConsent, setAgeConsent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const passwordStrength = (pwd: string) => {
     let score = 0;
@@ -26,18 +27,56 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+
     if (!ageConsent) {
-      alert("Please confirm you are 18 years of age or older and accept the Terms & Privacy Policy.");
+      setError("Please confirm you are 18 years of age or older and accept the Terms & Privacy Policy.");
       return;
     }
     if (form.password !== form.confirmPassword) {
-      alert("Passwords do not match!");
+      setError("Passwords do not match!");
       return;
     }
+    if (form.password.length < 8) {
+      setError("Password must be at least 8 characters long.");
+      return;
+    }
+
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    setStep(2);
+
+    try {
+      const res = await fetch("/api/v1/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "register",
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          password: form.password,
+          city: form.city || "Rajkot",
+          role: role.toUpperCase(),
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        if (data.token && typeof window !== "undefined") {
+          localStorage.setItem("hf_token", data.token);
+          if (data.user) localStorage.setItem("hf_user", JSON.stringify(data.user));
+          document.cookie = `hf_token=${data.token}; path=/; max-age=604800; SameSite=Lax`;
+          document.cookie = `hf_role=${(data.user?.role || role).toLowerCase()}; path=/; max-age=604800; SameSite=Lax`;
+          window.dispatchEvent(new Event("auth-state-changed"));
+        }
+        setStep(2);
+      } else {
+        setError(data.error || "Registration failed. Please try again.");
+      }
+    } catch {
+      setError("Network error occurred during registration. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (step === 2) {
@@ -194,6 +233,12 @@ export default function RegisterPage() {
                 </span>
               </label>
             </div>
+
+            {error && (
+              <div style={{ padding: "0.75rem 1rem", background: "rgba(239, 68, 68, 0.1)", border: "1px solid var(--danger)", borderRadius: "8px", color: "var(--danger)", fontSize: "0.875rem", marginBottom: "1rem" }}>
+                {error}
+              </div>
+            )}
 
             <button id="register-submit-btn" type="submit" className="btn btn-primary" style={{ width: "100%", justifyContent: "center", fontSize: "1rem", padding: "0.875rem" }} disabled={loading}>
               {loading ? "Creating account..." : `Create ${role === "cook" ? "Cook" : "Customer"} Account`}

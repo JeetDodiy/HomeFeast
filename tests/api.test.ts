@@ -55,4 +55,25 @@ describe("HomeFeast Business Logic Tests", () => {
     expect(planPrice - welcome50Discount).toBe(699);
     expect(planPrice - firstFeastDiscount).toBe(674);
   });
+
+  test("Persistent Prisma DB stores seeded users and supports bcrypt password verification", async () => {
+    const { prisma } = require("../lib/prisma");
+    const bcrypt = require("bcryptjs");
+
+    const admin = await prisma.user.findUnique({ where: { email: "admin@homefeast.in" } });
+    expect(admin).toBeDefined();
+    expect(admin.role).toBe("ADMIN");
+    expect(bcrypt.compareSync("admin123", admin.passwordHash)).toBe(true);
+
+    const cook = await prisma.user.findUnique({ where: { email: "demo@cook.com" } });
+    expect(cook).toBeDefined();
+    expect(cook.role).toBe("COOK");
+    expect(bcrypt.compareSync("demo123", cook.passwordHash)).toBe(true);
+
+    const cust = await prisma.user.findUnique({ where: { email: "demo@customer.com" } });
+    expect(cust).toBeDefined();
+    expect(cust.role).toBe("CUSTOMER");
+    expect(bcrypt.compareSync("demo123", cust.passwordHash)).toBe(true);
+  });
 });
+
