@@ -134,6 +134,25 @@ const DEFAULT_PLANS = [
   },
 ];
 
+// Helper to deduplicate orders by ID or customer+slot+plan
+function deduplicateOrders(items: any[]) {
+  const seenIds = new Set<string>();
+  const seenCustomerSlots = new Set<string>();
+  const uniqueOrders: any[] = [];
+  for (const o of items) {
+    if (!o) continue;
+    const idKey = String(o.id || "");
+    const custKey = `${(o.customer || o.customerName || "").toLowerCase().trim()}_${(o.slot || "").toLowerCase().trim()}_${(o.plan || o.planName || "").toLowerCase().trim()}`;
+    if ((idKey && seenIds.has(idKey)) || (custKey && seenCustomerSlots.has(custKey))) {
+      continue;
+    }
+    if (idKey) seenIds.add(idKey);
+    if (custKey) seenCustomerSlots.add(custKey);
+    uniqueOrders.push(o);
+  }
+  return uniqueOrders;
+}
+
 export default function CookDashboardPage() {
   const [activeTab, setActiveTab] = useState("dashboard");
 
@@ -222,39 +241,84 @@ export default function CookDashboardPage() {
       }
 
       const isDemoAccount = activeUser?.email === "demo@cook.com";
-      const cookChefName = activeUser?.name || "Home Cook";
-      const cookKitchenName = activeUser?.kitchenName || (cookChefName.toLowerCase().includes("patel") || cookChefName.toLowerCase().includes("meena") ? `${cookChefName}'s Kitchen` : `${cookChefName.split(" ")[0]}'s Kitchen`);
+      
+      // Clean and resolve chef and kitchen names dynamically
+      let cookChefName = (activeUser?.name || "Home Cook").trim();
+      cookChefName = cookChefName.replace(/['’]s['’]s/gi, "'s").replace(/['’]s$/i, "");
+      if (isDemoAccount && (!cookChefName || cookChefName === "Home Cook" || cookChefName.toLowerCase().includes("jeet"))) {
+        cookChefName = "Meenaben Patel";
+      } else if (activeUser?.email === "jeet@homefeast.in") {
+        cookChefName = "Jeet Dodiya";
+      }
 
-      // Load Profile
+      let cookKitchenName = activeUser?.kitchenName ? activeUser.kitchenName.replace(/['’]s['’]s/gi, "'s") : `${cookChefName}'s Kitchen`;
+      if (isDemoAccount) {
+        cookKitchenName = "Meenaben's Kitchen";
+        cookChefName = "Meenaben Patel";
+      } else if (activeUser?.email === "jeet@homefeast.in") {
+        cookKitchenName = "Jeet's Kitchen";
+        cookChefName = "Jeet Dodiya";
+      }
+
+      // Load Profile & Synchronize with active logged-in user
       try {
         const storedProfile = localStorage.getItem("hf_cook_profile");
+        let profileObj: any = null;
         if (storedProfile) {
-          const parsed = JSON.parse(storedProfile);
-          // Purge demo cook names ("Meenaben Patel", "Meenaben's Kitchen", "Meera") if user is a real custom cook
-          if (!isDemoAccount && (parsed.headCook === "Meenaben Patel" || parsed.shopName.includes("Meena") || parsed.shopName.includes("Meera") || parsed.headCook !== cookChefName)) {
-            parsed.headCook = cookChefName;
-            parsed.shopName = cookKitchenName;
-            parsed.bankHolder = cookChefName;
-            if (activeUser?.email) parsed.email = activeUser.email;
-            if (activeUser?.city) parsed.city = activeUser.city;
-            setProfile(parsed);
-            localStorage.setItem("hf_cook_profile", JSON.stringify(parsed));
-          } else {
-            setProfile(parsed);
-          }
-        } else {
-          const initialProfile = {
-            ...DEFAULT_PROFILE,
+          profileObj = JSON.parse(storedProfile);
+        }
+
+        const needsSync =
+          !profileObj ||
+          (activeUser && (profileObj.email !== activeUser.email || profileObj.headCook !== cookChefName)) ||
+          profileObj.shopName.includes("'s's") ||
+          profileObj.headCook.includes("'s's");
+
+        if (needsSync) {
+          profileObj = {
+            ...(profileObj || DEFAULT_PROFILE),
             headCook: cookChefName,
             shopName: cookKitchenName,
             bankHolder: cookChefName,
-            email: activeUser?.email || "cook@homefeast.in",
+            email: activeUser?.email || (isDemoAccount ? "demo@cook.com" : "cook@homefeast.in"),
             city: activeUser?.city || "Rajkot",
           };
-          setProfile(initialProfile);
-          localStorage.setItem("hf_cook_profile", JSON.stringify(initialProfile));
+          setProfile(profileObj);
+          localStorage.setItem("hf_cook_profile", JSON.stringify(profileObj));
+        } else {
+          setProfile(profileObj);
         }
       } catch {}
+
+      // Sync verified profile from live PostgreSQL backend
+      fetch("/api/v1/cooks")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && Array.isArray(data.data)) {
+            const matched = data.data.find(
+              (c: any) =>
+                (activeUser?.email && (c.email === activeUser.email || c.userId === activeUser.id)) ||
+                (activeUser?.name && (c.name?.toLowerCase() === activeUser.name.toLowerCase() || c.kitchenName?.toLowerCase() === cookKitchenName.toLowerCase())) ||
+                (isDemoAccount && c.kitchenName?.toLowerCase().includes("meenaben")) ||
+                (activeUser?.email === "jeet@homefeast.in" && c.kitchenName?.toLowerCase().includes("jeet"))
+            );
+            if (matched) {
+              setProfile((prev) => {
+                const synced = {
+                  ...prev,
+                  shopName: matched.kitchenName || prev.shopName,
+                  headCook: matched.name || prev.headCook,
+                  fssaiNumber: matched.fssaiNo || prev.fssaiNumber,
+                  city: matched.city || prev.city,
+                  serviceAreas: matched.serviceAreas || prev.serviceAreas,
+                };
+                localStorage.setItem("hf_cook_profile", JSON.stringify(synced));
+                return synced;
+              });
+            }
+          }
+        })
+        .catch(() => {});
 
       // Load Menu
       try {
@@ -279,51 +343,50 @@ export default function CookDashboardPage() {
         const storedSubscribers = localStorage.getItem("hf_cook_subscribers");
         if (storedSubscribers) {
           const parsedSubs = JSON.parse(storedSubscribers);
-          if (!isDemoAccount) {
-            const cleanSubs = parsedSubs.filter((s: any) => !(s.name === "Arjun Verma" && s.phone === "+91 98251 23456"));
-            setSubscribers(cleanSubs);
-          } else {
-            setSubscribers(parsedSubs);
-          }
+          const seenSubKeys = new Set<string>();
+          const dedupedSubs = parsedSubs.filter((s: any) => {
+            const key = `${s.name}_${s.phone}_${s.plan}`.toLowerCase();
+            if (seenSubKeys.has(key)) return false;
+            seenSubKeys.add(key);
+            return true;
+          });
+          setSubscribers(dedupedSubs);
         }
       } catch {}
 
-      // Load Orders from localStorage and live API
+      // Load Orders from localStorage with deduplication
       try {
         const storedOrders = localStorage.getItem("hf_cook_orders");
         if (storedOrders) {
           const parsedOrders = JSON.parse(storedOrders);
-          if (!isDemoAccount) {
-            const cleanOrders = parsedOrders.filter((o: any) => !(o.customer === "Arjun Verma" && o.phone === "+91 98251 23456"));
-            setOrders(cleanOrders);
-          } else {
-            setOrders(parsedOrders);
-          }
+          const dedupedOrders = deduplicateOrders(parsedOrders);
+          setOrders(dedupedOrders);
         }
       } catch {}
 
-      // Live Backend API Query: Connect orders across browsers & devices
-      const userKitchen = activeUser?.kitchenName || "Meenaben's Kitchen";
-      const targetCookId = activeUser?.cookId || (isDemoAccount ? "c1" : `c_${(activeUser?.name || "cook").toLowerCase().replace(/[^a-z0-9]/g, "_")}`);
+      // Live Backend API Query: Connect orders for this specific cook
+      const queryParams = new URLSearchParams();
+      if (activeUser?.id) queryParams.set("cookId", activeUser.id);
+      if (activeUser?.email) queryParams.set("email", activeUser.email);
+      queryParams.set("kitchen", cookKitchenName);
 
-      fetch(`/api/v1/orders?cookId=${encodeURIComponent(targetCookId)}`)
+      fetch(`/api/v1/orders?${queryParams.toString()}`)
         .then((res) => res.json())
         .then((orderData) => {
-          if (orderData.success && Array.isArray(orderData.data) && orderData.data.length > 0) {
+          if (orderData.success && Array.isArray(orderData.data)) {
             const formatted = orderData.data.map((o: any) => ({
               id: o.id,
               customer: o.customer || o.customerName || "Customer",
               phone: o.phone || "+91 98251 00000",
               plan: o.plan || o.planName || "Weekly Saver Plan",
-              slot: o.slot || o.mealSlot || "Lunch (12–1:30 PM)",
+              slot: o.slot || o.mealSlot || "Lunch (12:00 PM – 01:30 PM)",
               address: o.address || o.deliveryAddress || "Home delivery",
               status: o.status || "CONFIRMED",
               packedItems: o.packedItems || { sabzi: false, rotis: false, dal: false, rice: false },
-              items: o.items || ["Daily Gujarati Thali", "Phulka Roti", "Dal/Kadhi", "Sabzi", "Rice"],
+              items: o.items && o.items.length > 0 ? o.items : ["Daily Gujarati Thali", "Phulka Roti", "Dal/Kadhi", "Sabzi", "Rice"],
             }));
             setOrders((prev) => {
-              const prevIds = new Set(prev.map((p) => p.id));
-              const merged = [...prev, ...formatted.filter((f: any) => !prevIds.has(f.id))];
+              const merged = deduplicateOrders([...formatted, ...prev]);
               if (typeof window !== "undefined") localStorage.setItem("hf_cook_orders", JSON.stringify(merged));
               return merged;
             });
@@ -331,7 +394,12 @@ export default function CookDashboardPage() {
         })
         .catch(() => {});
 
-      fetch(`/api/v1/subscriptions?cookId=${encodeURIComponent(targetCookId)}`)
+      const subParams = new URLSearchParams();
+      if (activeUser?.id) subParams.set("cookId", activeUser.id);
+      if (activeUser?.email) subParams.set("email", activeUser.email);
+      subParams.set("kitchen", cookKitchenName);
+
+      fetch(`/api/v1/subscriptions?${subParams.toString()}`)
         .then((res) => res.json())
         .then((subJson) => {
           if (subJson.success && Array.isArray(subJson.data) && subJson.data.length > 0) {
@@ -340,7 +408,7 @@ export default function CookDashboardPage() {
               name: s.name || s.customerName || "Customer",
               phone: s.phone || "",
               plan: s.plan || s.planName || "Weekly Saver Plan (7 Days)",
-              slot: s.slot || "Lunch (12–1:30 PM)",
+              slot: s.slot || "Lunch (12:00 PM – 01:30 PM)",
               address: s.address || s.deliveryAddress || "Home delivery",
               startDate: s.startDate || "2026-10-14",
               remainingMeals: s.remainingMeals ?? s.totalMeals ?? 7,
@@ -581,7 +649,7 @@ export default function CookDashboardPage() {
       status: "CONFIRMED",
       packedItems: { sabzi: false, rotis: false, dal: false, rice: false },
     };
-    const updatedOrders = [orderTicket, ...orders];
+    const updatedOrders = deduplicateOrders([orderTicket, ...orders]);
     setOrders(updatedOrders);
     if (typeof window !== "undefined") localStorage.setItem("hf_cook_orders", JSON.stringify(updatedOrders));
 
@@ -640,7 +708,7 @@ export default function CookDashboardPage() {
       status: "CONFIRMED",
       packedItems: { sabzi: true, rotis: false, dal: false, rice: false },
     };
-    const updatedOrders = [testOrder, ...orders];
+    const updatedOrders = deduplicateOrders([testOrder, ...orders]);
     setOrders(updatedOrders);
     if (typeof window !== "undefined") localStorage.setItem("hf_cook_orders", JSON.stringify(updatedOrders));
 

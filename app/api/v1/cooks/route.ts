@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { COOKS, DEFAULT_WEEKLY_MENU } from "@/lib/mockData";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -14,42 +15,68 @@ export async function GET(request: Request) {
       include: {
         city: true,
         plans: true,
+        user: true,
         cuisines: { include: { cuisine: true } },
       },
     });
 
-    let formatted = cooks.map((c) => ({
-      id: c.id,
-      userId: c.userId,
-      kitchenName: c.kitchenName,
-      name: c.kitchenName,
-      bio: c.bio,
-      photos: c.photos,
-      coverImage: c.coverImage,
-      fssaiNo: c.fssaiNo,
-      city: c.city?.name || "Rajkot",
-      area: c.area,
-      pincode: c.pincode,
-      serviceAreas: c.serviceAreas,
-      deliverySlots: c.deliverySlots,
-      isVeg: c.isVeg,
-      status: c.status.toLowerCase(),
-      rating: c.ratingAvg,
-      totalReviews: c.totalReviews,
-      totalOrders: c.totalOrders,
-      responseTime: c.responseTime,
-      cuisines: c.cuisines?.map((cc) => cc.cuisine?.name?.toLowerCase()) || [],
-      plans: c.plans.map((p) => ({
-        id: p.id,
-        type: p.type.toLowerCase(),
-        label: p.name,
-        price: p.price,
-        perMeal: p.perMeal,
-        description: p.description,
-        includes: p.includes,
-        popular: p.popular,
-      })),
-    }));
+    let formatted = cooks.map((c: any) => {
+      const match = COOKS.find(
+        (m) => m.id === c.id || m.kitchenName?.toLowerCase() === c.kitchenName?.toLowerCase()
+      );
+      return {
+        id: c.id,
+        userId: c.userId,
+        kitchenName: c.kitchenName,
+        name: c.user?.name || match?.name || c.kitchenName,
+        bio: c.bio,
+        photos: c.photos && c.photos.length > 0 ? c.photos : [c.coverImage],
+        coverImage: c.coverImage,
+        avatar: match?.avatar || c.coverImage || "https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?w=200&q=80",
+        memberSince: match?.memberSince || "2024",
+        fssaiNo: c.fssaiNo,
+        city: c.city?.name || "Rajkot",
+        area: c.area,
+        pincode: c.pincode,
+        serviceAreas: c.serviceAreas,
+        deliverySlots: c.deliverySlots,
+        isVeg: c.isVeg,
+        status: c.status.toLowerCase(),
+        rating: c.ratingAvg,
+        totalReviews: c.totalReviews,
+        totalOrders: c.totalOrders,
+        responseTime: c.responseTime,
+        cuisines: c.cuisines?.map((cc: any) => cc.cuisine?.name?.toLowerCase()) || [],
+        weeklyMenu: match?.weeklyMenu || DEFAULT_WEEKLY_MENU,
+        plans: c.plans.map((p: any) => ({
+          id: p.id,
+          type: p.type.toLowerCase(),
+          label: p.name,
+          price: p.price,
+          perMeal: p.perMeal,
+          description: p.description,
+          includes: p.includes,
+          popular: p.popular,
+        })),
+      };
+    });
+
+    // Deduplicate kitchens so no kitchen is ever repeated
+    const seenKitchenNames = new Set<string>();
+    const seenCookIds = new Set<string>();
+    const deduplicatedCooks: typeof formatted = [];
+
+    for (const c of formatted) {
+      const normName = (c.kitchenName || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const normId = (c.id || "").toLowerCase();
+      if ((normName && seenKitchenNames.has(normName)) || (normId && seenCookIds.has(normId))) {
+        continue;
+      }
+      if (normName) seenKitchenNames.add(normName);
+      if (normId) seenCookIds.add(normId);
+      deduplicatedCooks.push(c);
+    }
+    formatted = deduplicatedCooks;
 
     if (city) {
       formatted = formatted.filter((c) => c.city?.toLowerCase() === city);

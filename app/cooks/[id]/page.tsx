@@ -16,7 +16,25 @@ import {
   Calendar,
   MessageSquare,
 } from "lucide-react";
-import { COOKS, REVIEWS, CUISINES } from "@/lib/mockData";
+import { COOKS, REVIEWS, CUISINES, DEFAULT_WEEKLY_MENU } from "@/lib/mockData";
+
+function enrichCookProfile(raw: any) {
+  if (!raw) return null;
+  const match = COOKS.find(
+    (c) => c.id === raw.id || c.kitchenName?.toLowerCase() === raw.kitchenName?.toLowerCase()
+  );
+  return {
+    ...raw,
+    name: raw.name || match?.name || raw.kitchenName || "Home Cook",
+    avatar: raw.avatar || match?.avatar || raw.coverImage || "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&q=80",
+    coverImage: raw.coverImage || match?.coverImage || "https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=800&q=80",
+    memberSince: raw.memberSince || match?.memberSince || "2024",
+    totalOrders: raw.totalOrders ?? match?.totalOrders ?? 100,
+    rating: raw.rating ?? match?.rating ?? 4.8,
+    totalReviews: raw.totalReviews ?? match?.totalReviews ?? 12,
+    weeklyMenu: raw.weeklyMenu || match?.weeklyMenu || DEFAULT_WEEKLY_MENU,
+  };
+}
 
 function Stars({ rating, size = 14 }: { rating: number; size?: number }) {
   return (
@@ -32,7 +50,7 @@ export default function CookProfilePage() {
   const params = useParams();
   const id = (params?.id as string) || "c1";
 
-  const [cook, setCook] = useState<any>(() => COOKS.find((c) => c.id === id) || null);
+  const [cook, setCook] = useState<any>(() => enrichCookProfile(COOKS.find((c) => c.id === id) || null));
   const [loading, setLoading] = useState(!cook);
 
   useEffect(() => {
@@ -45,7 +63,7 @@ export default function CookProfilePage() {
           const parsed = JSON.parse(stored);
           const found = parsed.find((c: any) => c.id === id || c.kitchenName?.toLowerCase() === id.toLowerCase());
           if (found) {
-            setCook(found);
+            setCook(enrichCookProfile(found));
             setLoading(false);
             return;
           }
@@ -85,17 +103,9 @@ export default function CookProfilePage() {
                 { id: `p_${cookId}_weekly`, type: "weekly", label: "Weekly Saver Plan", price: 749, perMeal: 107, description: "7-day variety plan with Sunday sweet special.", includes: ["Sabzi", "Dal/Kadhi", "Rotis", "Rice", "Sweet"], popular: true },
                 { id: `p_${cookId}_monthly`, type: "monthly", label: "Monthly Royal Plan", price: 2799, perMeal: 93, description: "30-day meal plan. Pause anytime.", includes: ["Full Thali", "Special Sundays", "5 Skips"] },
               ],
-              weeklyMenu: {
-                Monday: ["Sev Tameta Nu Shaak", "Bhindi Masala", "Phulka Rotis", "Gujarati Kadhi", "Jeera Rice"],
-                Tuesday: ["Kathiyawadi Ringan No Olo", "Bajra No Rotlo with Makhan", "Desi Kadhi", "Vaghareli Khichdi"],
-                Wednesday: ["Surti Undhiyu", "Puri / Phulkas", "Dal Fry", "Vegetable Pulao", "Jalebi (2 pcs)"],
-                Thursday: ["Gatta Nu Shaak", "Aloo Gobi Matar", "Phulka Rotis", "Toor Dal Fry", "Steamed Rice"],
-                Friday: ["Lasaniya Batata", "Gujarati Bhakri", "Desi Chhach", "Plain Khichdi", "Garlic Chutney"],
-                Saturday: ["Chole Masala", "Bhature / Phulkas", "Dal Tadka", "Peas Pulao", "Sweet Lassi"],
-                Sunday: ["Royal Kathiyawadi Thali", "Bajra Rotlo", "Special Dal", "Basundi with Dry Fruits"],
-              },
+              weeklyMenu: DEFAULT_WEEKLY_MENU,
             };
-            setCook(synthesized);
+            setCook(enrichCookProfile(synthesized));
             setLoading(false);
             return;
           }
@@ -109,7 +119,7 @@ export default function CookProfilePage() {
           if (data.success && Array.isArray(data.data)) {
             const found = data.data.find((c: any) => c.id === id || c.kitchenName?.toLowerCase() === id.toLowerCase());
             if (found) {
-              setCook(found);
+              setCook(enrichCookProfile(found));
             }
           }
         })
@@ -117,10 +127,11 @@ export default function CookProfilePage() {
     }
   }, [id, cook]);
 
-  const days = cook?.weeklyMenu ? Object.keys(cook.weeklyMenu) : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const activeWeeklyMenu: Record<string, string[]> = cook?.weeklyMenu || DEFAULT_WEEKLY_MENU;
+  const days = Object.keys(activeWeeklyMenu).length > 0 ? Object.keys(activeWeeklyMenu) : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   const cookReviews = cook ? REVIEWS.filter((r) => r.cookId === cook.id) : [];
   const [activeTab, setActiveTab] = useState<"menu" | "plans" | "reviews">("menu");
-  const [selectedDay, setSelectedDay] = useState<string>(days[0]);
+  const [selectedDay, setSelectedDay] = useState<string>("Monday");
   const [selectedPlan, setSelectedPlan] = useState<string>(cook?.plans?.find((p: any) => p.popular)?.id || cook?.plans?.[0]?.id || "p1");
 
   useEffect(() => {
@@ -222,7 +233,7 @@ export default function CookProfilePage() {
 
       {/* Cover Image */}
       <div style={{ height: 320, overflow: "hidden", position: "relative" }}>
-        <img src={cook.coverImage} alt={cook.kitchenName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        <img src={cook.coverImage || "https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=800&q=80"} alt={cook.kitchenName || "Kitchen"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.7))" }} />
         <div style={{ position: "absolute", top: 16, right: 16, display: "flex", gap: "0.5rem" }}>
           <button
@@ -283,8 +294,8 @@ export default function CookProfilePage() {
             <div className="card" style={{ padding: "1.75rem", marginBottom: "1.5rem" }}>
               <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start", flexWrap: "wrap" }}>
                 <img
-                  src={cook.avatar}
-                  alt={cook.name}
+                  src={cook.avatar || cook.coverImage || "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&q=80"}
+                  alt={cook.name || cook.kitchenName || "Home Cook"}
                   style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover", border: "4px solid var(--surface)" }}
                 />
                 <div style={{ flex: 1 }}>
@@ -297,12 +308,12 @@ export default function CookProfilePage() {
                       {cook.isVeg ? "Pure Veg" : "Non-Veg"}
                     </span>
                   </div>
-                  <p style={{ color: "var(--text-muted)", marginBottom: "0.75rem" }}>by {cook.name} · Member since {cook.memberSince}</p>
+                  <p style={{ color: "var(--text-muted)", marginBottom: "0.75rem" }}>by {cook.name || "Home Cook"} · Member since {cook.memberSince || "2024"}</p>
                   <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
-                      <Stars rating={cook.rating} size={16} />
-                      <span style={{ fontWeight: 700, color: "var(--text)" }}>{cook.rating}</span>
-                      <span style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>({cook.totalReviews} reviews)</span>
+                      <Stars rating={cook.rating || 4.8} size={16} />
+                      <span style={{ fontWeight: 700, color: "var(--text)" }}>{cook.rating || 4.8}</span>
+                      <span style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>({cook.totalReviews || 12} reviews)</span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", color: "var(--text-muted)", fontSize: "0.875rem" }}>
                       <MapPin size={14} style={{ color: "var(--primary)" }} />
@@ -310,7 +321,7 @@ export default function CookProfilePage() {
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", color: "var(--text-muted)", fontSize: "0.875rem" }}>
                       <UtensilsCrossed size={14} style={{ color: "var(--secondary)" }} />
-                      {cook.totalOrders.toLocaleString()} orders served
+                      {(cook.totalOrders || 100).toLocaleString()} orders served
                     </div>
                   </div>
                 </div>
@@ -405,22 +416,28 @@ export default function CookProfilePage() {
                     </div>
                     {/* Menu Items */}
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
-                      {(cook.weeklyMenu as Record<string, string[]>)[selectedDay]?.map((item: string, i: number) => (
-                        <div
-                          key={i}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.75rem",
-                            padding: "0.875rem 1rem",
-                            background: "var(--surface-alt)",
-                            borderRadius: "var(--radius-sm)",
-                          }}
-                        >
-                          <span className={cook.isVeg ? "veg-dot" : "nonveg-dot"} />
-                          <span style={{ fontSize: "0.9375rem", color: "var(--text)", fontWeight: 500 }}>{item}</span>
+                      {(activeWeeklyMenu[selectedDay] || activeWeeklyMenu["Monday"] || []).length > 0 ? (
+                        (activeWeeklyMenu[selectedDay] || activeWeeklyMenu["Monday"] || []).map((item: string, i: number) => (
+                          <div
+                            key={i}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.75rem",
+                              padding: "0.875rem 1rem",
+                              background: "var(--surface-alt)",
+                              borderRadius: "var(--radius-sm)",
+                            }}
+                          >
+                            <span className={cook?.isVeg ? "veg-dot" : "nonveg-dot"} />
+                            <span style={{ fontSize: "0.9375rem", color: "var(--text)", fontWeight: 500 }}>{item}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-muted)", background: "var(--surface-alt)", borderRadius: "var(--radius-sm)" }}>
+                          Fresh homestyle specials cooked daily with handpicked seasonal ingredients.
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                 )}
@@ -446,7 +463,7 @@ export default function CookProfilePage() {
                           </div>
                         </div>
                         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.875rem" }}>
-                          {plan.includes.map((item: string) => (
+                          {(plan.includes || []).map((item: string) => (
                             <span key={item} style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
                               <CheckCircle size={12} style={{ color: "var(--secondary)" }} /> {item}
                             </span>

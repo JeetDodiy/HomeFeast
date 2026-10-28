@@ -103,6 +103,10 @@ describe("HomeFeast PostgreSQL Audit Verification Tests", () => {
     const cookSubs = await prisma.subscription.findMany({ where: { cookId: cook!.id } });
     const foundSub = cookSubs.find((s) => s.id === sub.id);
     expect(foundSub).toBeDefined();
+
+    // Clean up test order & subscription so test runs don't leave duplicate orders
+    await prisma.order.delete({ where: { id: order.id } }).catch(() => {});
+    await prisma.subscription.delete({ where: { id: sub.id } }).catch(() => {});
   });
 
   // Test HF-6: Reviews Update Cook Average Rating in PostgreSQL

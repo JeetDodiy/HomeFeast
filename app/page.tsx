@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -363,30 +363,224 @@ export default function HomePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [featuredCooks, setFeaturedCooks] = useState<any[]>(COOKS);
 
-  // Sync registered cooks into featured cooks section
+  // Sync registered cooks into featured cooks section from both localStorage & PostgreSQL API
   useEffect(() => {
+    const normalizeKitchenName = (name: string) =>
+      (name || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    const deduplicateCooks = (cooksList: any[]) => {
+      const seenNames = new Set<string>();
+      const seenIds = new Set<string>();
+      const uniqueList: any[] = [];
+
+      for (const c of cooksList) {
+        if (!c) continue;
+        const normName = normalizeKitchenName(c.kitchenName || c.name || "");
+        const cookId = (c.id || "").toString();
+
+        if (normName && seenNames.has(normName)) continue;
+        if (cookId && seenIds.has(cookId)) continue;
+
+        if (normName) seenNames.add(normName);
+        if (cookId) seenIds.add(cookId);
+
+        // Deduplicate this cook's plans by type
+        const seenPlanTypes = new Set<string>();
+        const uniquePlans: any[] = [];
+        if (Array.isArray(c.plans)) {
+          for (const p of c.plans) {
+            const pType = (p.type || p.name || "").toString().toLowerCase();
+            if (!seenPlanTypes.has(pType)) {
+              seenPlanTypes.add(pType);
+              uniquePlans.push(p);
+            }
+          }
+        }
+
+        uniqueList.push({
+          ...c,
+          plans: uniquePlans.length > 0 ? uniquePlans : c.plans,
+        });
+      }
+      return uniqueList;
+    };
+
     if (typeof window !== "undefined") {
+      let initialList = [...COOKS];
       try {
         const stored = localStorage.getItem("hf_registered_cooks");
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            const merged = [...parsed, ...COOKS];
-            const seen: Record<string, boolean> = {};
-            const uniqueList: any[] = [];
-            for (const c of merged) {
-              const key = (c.id || c.kitchenName || "").toLowerCase();
-              if (key && !seen[key]) {
-                seen[key] = true;
-                uniqueList.push(c);
-              }
-            }
-            setFeaturedCooks(uniqueList);
+            initialList = [...parsed, ...COOKS];
           }
         }
       } catch {}
+
+      setFeaturedCooks(deduplicateCooks(initialList));
+
+      // Fetch from PostgreSQL backend (highest priority - real database data)
+      fetch("/api/v1/cooks")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+            let userLocal: any[] = [];
+            try {
+              const stored = localStorage.getItem("hf_registered_cooks");
+              if (stored) {
+                const parsed = JSON.parse(stored);
+                if (Array.isArray(parsed)) userLocal = parsed;
+              }
+            } catch {}
+            setFeaturedCooks(deduplicateCooks([...userLocal, ...data.data]));
+          }
+        })
+        .catch(() => {});
     }
   }, []);
+
+  // ── Dynamic Kitchen Plans & Auto-Change State ─────────────────
+  const [selectedKitchenFilter, setSelectedKitchenFilter] = useState<string>("all");
+  const [selectedDurationFilter, setSelectedDurationFilter] = useState<string>("all");
+  const [planSlideIndex, setPlanSlideIndex] = useState(0);
+  const [isPlanAutoRotating, setIsPlanAutoRotating] = useState(true);
+  const [isPlanHovered, setIsPlanHovered] = useState(false);
+  const [planProgressPercent, setPlanProgressPercent] = useState(0);
+
+  // Extract all dynamic plans from all active kitchens - STRICTLY ONE PLAN PER DURATION PER KITCHEN
+  const allKitchenPlans = useMemo(() => {
+    const list: any[] = [];
+    const seenKitchenPlanTypes = new Set<string>();
+
+    (featuredCooks || []).forEach((cook) => {
+      if (cook.plans && Array.isArray(cook.plans) && cook.plans.length > 0) {
+        cook.plans.forEach((plan: any) => {
+          const typeLower = (plan.type || "weekly").toLowerCase();
+          const normKitchen = (cook.kitchenName || cook.name || cook.id || "")
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, "");
+
+          // Composite key: kitchen name + plan duration type
+          const compositeKey = `${normKitchen}_${typeLower}`;
+          if (seenKitchenPlanTypes.has(compositeKey)) {
+            return; // Skip duplicate copy!
+          }
+          seenKitchenPlanTypes.add(compositeKey);
+
+          const savings =
+            typeLower === "monthly"
+              ? "Save up to 17%"
+              : typeLower === "weekly"
+              ? "Save up to 11%"
+              : "Flexible Daily";
+
+          list.push({
+            cookId: cook.id,
+            cookName: cook.name || cook.kitchenName,
+            kitchenName: cook.kitchenName || cook.name,
+            avatar: cook.avatar || cook.coverImage || "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=600&q=80",
+            rating: cook.rating || 4.9,
+            totalReviews: cook.totalReviews || 120,
+            city: cook.city || "Rajkot",
+            area: cook.area || "City Center",
+            cuisines: cook.cuisines || ["Gujarati"],
+            isVeg: cook.isVeg !== undefined ? cook.isVeg : true,
+            planId: plan.id,
+            planType: typeLower,
+            label: plan.label || plan.name || `${typeLower.toUpperCase()} Plan`,
+            price: Number(plan.price) || 120,
+            perMeal: Number(plan.perMeal) || Math.round((Number(plan.price) || 120) / (typeLower === "monthly" ? 30 : typeLower === "weekly" ? 7 : 1)),
+            period: typeLower === "monthly" ? "/month" : typeLower === "weekly" ? "/week" : "/day",
+            savings,
+            popular: Boolean(plan.popular || typeLower === "weekly"),
+            description: plan.description || "Fresh home-cooked hygienic meals prepared with love.",
+            includes: Array.isArray(plan.includes) && plan.includes.length > 0
+              ? plan.includes
+              : ["Fresh Sabzi", "Dal/Kadhi", "Fresh Phulkas", "Rice/Khichdi", "Salad & Chutney"],
+            specialItem: cook.weeklyMenu ? ((Object.values(cook.weeklyMenu) as any[])[0] || [])[0] : "Desi Homestyle Special",
+          });
+        });
+      }
+    });
+    return list;
+  }, [featuredCooks]);
+
+  // Unique list of kitchens for the filter bar
+  const availableKitchens = useMemo(() => {
+    const seenNames = new Set<string>();
+    const list: { id: string; name: string }[] = [];
+    allKitchenPlans.forEach((p) => {
+      const normKitchen = p.kitchenName.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (!seenNames.has(normKitchen)) {
+        seenNames.add(normKitchen);
+        list.push({ id: p.cookId, name: p.kitchenName });
+      }
+    });
+    return list;
+  }, [allKitchenPlans]);
+
+  // Dynamic slides grouping: filtered by kitchen and duration, chunked into sets of 3
+  const planSlides = useMemo(() => {
+    let filtered = allKitchenPlans;
+    if (selectedKitchenFilter !== "all") {
+      filtered = filtered.filter(
+        (p) =>
+          p.cookId === selectedKitchenFilter ||
+          p.kitchenName?.trim().toLowerCase() === selectedKitchenFilter.trim().toLowerCase()
+      );
+    }
+    if (selectedDurationFilter !== "all") {
+      filtered = filtered.filter((p) => p.planType === selectedDurationFilter);
+    }
+
+    const chunkSize = 3;
+    const slides: any[][] = [];
+    for (let i = 0; i < filtered.length; i += chunkSize) {
+      slides.push(filtered.slice(i, i + chunkSize));
+    }
+    return slides.length > 0 ? slides : [[]];
+  }, [allKitchenPlans, selectedKitchenFilter, selectedDurationFilter]);
+
+  // Auto-change algorithm effect (5.5 seconds per slide rotation)
+  useEffect(() => {
+    if (!isPlanAutoRotating || isPlanHovered || planSlides.length <= 1) {
+      return;
+    }
+
+    const intervalStep = 50;
+    const totalDuration = 5500;
+    let elapsed = 0;
+
+    const timer = setInterval(() => {
+      elapsed += intervalStep;
+      setPlanProgressPercent(Math.min((elapsed / totalDuration) * 100, 100));
+
+      if (elapsed >= totalDuration) {
+        elapsed = 0;
+        setPlanSlideIndex((prev) => (prev + 1) % planSlides.length);
+        setPlanProgressPercent(0);
+      }
+    }, intervalStep);
+
+    return () => clearInterval(timer);
+  }, [isPlanAutoRotating, isPlanHovered, planSlides.length]);
+
+  // Reset index when filter changes
+  useEffect(() => {
+    setPlanSlideIndex(0);
+    setPlanProgressPercent(0);
+  }, [selectedKitchenFilter, selectedDurationFilter]);
+
+  const handlePrevPlanSlide = () => {
+    setPlanSlideIndex((prev) => (prev - 1 + planSlides.length) % planSlides.length);
+    setPlanProgressPercent(0);
+  };
+
+  const handleNextPlanSlide = () => {
+    setPlanSlideIndex((prev) => (prev + 1) % planSlides.length);
+    setPlanProgressPercent(0);
+  };
 
   // Auto-rotation timer with smooth progress line (5 seconds per slide)
   useEffect(() => {
@@ -1433,73 +1627,751 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ===== PLANS SECTION ===== */}
-      <section id="plans" className="section" style={{ background: "var(--bg)" }}>
-        <div className="container-custom">
-          <div style={{ textAlign: "center", marginBottom: "3rem" }}>
-            <div className="section-tag" style={{ display: "inline-flex" }}>💰 Affordable Plans</div>
-            <h2 style={{ fontFamily: "Poppins", fontSize: "clamp(1.75rem, 4vw, 2.75rem)", fontWeight: 800, color: "var(--text)", marginBottom: "1rem" }}>
+      {/* ===== PLANS SECTION (DYNAMIC KITCHEN PLANS & AUTO-CHANGE ROTATION) ===== */}
+      <section
+        id="plans"
+        className="section"
+        style={{
+          background: "var(--bg)",
+          position: "relative",
+          overflow: "hidden",
+          paddingTop: "4.5rem",
+          paddingBottom: "5.5rem",
+        }}
+        onMouseEnter={() => setIsPlanHovered(true)}
+        onMouseLeave={() => setIsPlanHovered(false)}
+      >
+        {/* Ambient background glow accents */}
+        <div
+          style={{
+            position: "absolute",
+            top: "15%",
+            left: "5%",
+            width: "350px",
+            height: "350px",
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(232, 85, 7, 0.09) 0%, transparent 70%)",
+            filter: "blur(70px)",
+            pointerEvents: "none",
+          }}
+          aria-hidden="true"
+        />
+        <div
+          style={{
+            position: "absolute",
+            bottom: "10%",
+            right: "5%",
+            width: "400px",
+            height: "400px",
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(245, 158, 11, 0.08) 0%, transparent 70%)",
+            filter: "blur(80px)",
+            pointerEvents: "none",
+          }}
+          aria-hidden="true"
+        />
+
+        <div className="container-custom" style={{ position: "relative", zIndex: 1 }}>
+          {/* Section Header */}
+          <div style={{ textAlign: "center", marginBottom: "2.75rem" }}>
+            <div
+              className="section-tag"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                padding: "0.4rem 1.1rem",
+                borderRadius: "999px",
+                background: "rgba(232, 85, 7, 0.12)",
+                border: "1px solid rgba(232, 85, 7, 0.3)",
+                color: "var(--primary)",
+                fontWeight: 700,
+                fontSize: "0.8125rem",
+                marginBottom: "1rem",
+              }}
+            >
+              <Sparkles size={15} style={{ color: "var(--primary)" }} />
+              Live Kitchen Plans • Auto-Rotating Showcase
+            </div>
+            <h2
+              style={{
+                fontFamily: "Poppins",
+                fontSize: "clamp(1.85rem, 4.5vw, 2.85rem)",
+                fontWeight: 800,
+                color: "var(--text)",
+                marginBottom: "0.85rem",
+                lineHeight: 1.2,
+                letterSpacing: "-0.02em",
+              }}
+            >
               Choose Your Meal Plan
             </h2>
-            <p style={{ color: "var(--text-muted)", fontSize: "1.0625rem", maxWidth: 560, margin: "0 auto" }}>
-              Flexible plans to match your lifestyle. Starting from just ₹83/meal.
+            <p
+              style={{
+                color: "var(--text-muted)",
+                fontSize: "1.0625rem",
+                maxWidth: 680,
+                margin: "0 auto",
+                lineHeight: 1.6,
+              }}
+            >
+              Explore authentic home-cooked meal subscriptions from verified kitchens across Gujarat.
+              Rotates automatically through top kitchens or pick a specific kitchen below.
             </p>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1.5rem", maxWidth: 900, margin: "0 auto" }}>
-            {[
-              { type: "Daily", price: "₹100–150", perMeal: "₹100–150", period: "/day", savings: null, popular: false },
-              { type: "Weekly", price: "₹649–949", perMeal: "₹93–136", period: "/week", savings: "Save up to 11%", popular: true },
-              { type: "Monthly", price: "₹2,499–3,599", perMeal: "₹83–120", period: "/month", savings: "Save up to 17%", popular: false },
-            ].map((plan) => (
-              <div
-                key={plan.type}
-                className={`plan-card${plan.popular ? " popular" : ""}`}
-                style={{ textAlign: "center" }}
+          {/* Interactive Filter & Auto-Change Control Bar */}
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "1rem",
+              marginBottom: "1.75rem",
+              padding: "1rem 1.25rem",
+              background: "var(--surface)",
+              borderRadius: "16px",
+              border: "1px solid var(--border)",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+            }}
+          >
+            {/* Kitchen Selector Tabs */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                overflowX: "auto",
+                maxWidth: "100%",
+                paddingBottom: "0.25rem",
+              }}
+              className="hide-scrollbar"
+            >
+              <button
+                onClick={() => setSelectedKitchenFilter("all")}
+                className={`btn btn-sm ${selectedKitchenFilter === "all" ? "btn-primary" : "btn-outline"}`}
+                style={{
+                  borderRadius: "999px",
+                  fontSize: "0.8125rem",
+                  padding: "0.4rem 0.9rem",
+                  whiteSpace: "nowrap",
+                }}
               >
-                <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)", marginBottom: "0.5rem" }}>
-                  {plan.type}
-                </h3>
-                <div style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.75rem", color: "var(--primary)", marginBottom: "0.25rem" }}>
-                  {plan.price}
-                </div>
-                <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "0.5rem" }}>{plan.period}</div>
-                <div style={{ fontSize: "0.875rem", color: "var(--secondary)", fontWeight: 600, marginBottom: "1.5rem", minHeight: 20 }}>
-                  {plan.savings || " "}
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem", marginBottom: "1.5rem", textAlign: "left" }}>
-                  {PLAN_FEATURES.map((f) => {
-                    const enabled =
-                      plan.type === "Monthly" ? f.monthly : plan.type === "Weekly" ? f.weekly : f.daily;
-                    return (
-                      <div key={f.feature} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <CheckCircle
-                          size={16}
-                          style={{ color: enabled ? "var(--secondary)" : "var(--border)", flexShrink: 0 }}
-                          fill={enabled ? "var(--secondary)" : "none"}
+                🔥 All Kitchens ({allKitchenPlans.length})
+              </button>
+              {availableKitchens.map((k) => (
+                <button
+                  key={k.id}
+                  onClick={() => setSelectedKitchenFilter(k.id)}
+                  className={`btn btn-sm ${selectedKitchenFilter === k.id ? "btn-primary" : "btn-outline"}`}
+                  style={{
+                    borderRadius: "999px",
+                    fontSize: "0.8125rem",
+                    padding: "0.4rem 0.9rem",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <ChefHat size={13} style={{ marginRight: 4 }} />
+                  {k.name}
+                </button>
+              ))}
+            </div>
+
+            {/* Duration Selector & Auto-Rotation HUD */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+              {/* Duration filter tabs */}
+              <div
+                style={{
+                  display: "inline-flex",
+                  background: "var(--surface-alt)",
+                  borderRadius: "999px",
+                  padding: "3px",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                {[
+                  { id: "all", label: "All" },
+                  { id: "daily", label: "Daily" },
+                  { id: "weekly", label: "Weekly" },
+                  { id: "monthly", label: "Monthly" },
+                ].map((d) => (
+                  <button
+                    key={d.id}
+                    onClick={() => setSelectedDurationFilter(d.id)}
+                    style={{
+                      background: selectedDurationFilter === d.id ? "var(--primary)" : "transparent",
+                      color: selectedDurationFilter === d.id ? "#fff" : "var(--text-muted)",
+                      border: "none",
+                      padding: "0.3rem 0.75rem",
+                      borderRadius: "999px",
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Auto-Rotation Live Status Badge & Toggle */}
+              <button
+                onClick={() => setIsPlanAutoRotating((prev) => !prev)}
+                title={isPlanAutoRotating ? "Pause Auto-Rotation" : "Resume Auto-Rotation"}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.4rem",
+                  background: isPlanAutoRotating
+                    ? isPlanHovered
+                      ? "rgba(245, 158, 11, 0.15)"
+                      : "rgba(34, 197, 94, 0.15)"
+                    : "rgba(156, 163, 175, 0.15)",
+                  color: isPlanAutoRotating
+                    ? isPlanHovered
+                      ? "var(--accent)"
+                      : "#22c55e"
+                    : "var(--text-muted)",
+                  border: "1px solid",
+                  borderColor: isPlanAutoRotating
+                    ? isPlanHovered
+                      ? "rgba(245, 158, 11, 0.3)"
+                      : "rgba(34, 197, 94, 0.3)"
+                    : "var(--border)",
+                  borderRadius: "999px",
+                  padding: "0.35rem 0.85rem",
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                {isPlanAutoRotating ? (
+                  isPlanHovered ? (
+                    <>
+                      <Pause size={12} /> Paused on Hover
+                    </>
+                  ) : (
+                    <>
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          background: "#22c55e",
+                          display: "inline-block",
+                          boxShadow: "0 0 8px #22c55e",
+                        }}
+                      />
+                      Auto-Cycling ({Math.ceil((5500 - (planProgressPercent / 100) * 5500) / 1000)}s)
+                    </>
+                  )
+                ) : (
+                  <>
+                    <Play size={12} /> Play Auto-Cycle
+                  </>
+                )}
+              </button>
+
+              {/* Prev / Next Buttons */}
+              <div style={{ display: "flex", gap: "0.35rem" }}>
+                <button
+                  onClick={handlePrevPlanSlide}
+                  disabled={planSlides.length <= 1}
+                  className="btn btn-outline btn-sm"
+                  style={{
+                    width: 32,
+                    height: 32,
+                    padding: 0,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    opacity: planSlides.length <= 1 ? 0.4 : 1,
+                  }}
+                  aria-label="Previous kitchen plans"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  onClick={handleNextPlanSlide}
+                  disabled={planSlides.length <= 1}
+                  className="btn btn-outline btn-sm"
+                  style={{
+                    width: 32,
+                    height: 32,
+                    padding: 0,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    opacity: planSlides.length <= 1 ? 0.4 : 1,
+                  }}
+                  aria-label="Next kitchen plans"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Glowing Auto-Change Progress Bar */}
+          {isPlanAutoRotating && planSlides.length > 1 && (
+            <div
+              style={{
+                width: "100%",
+                height: 3,
+                background: "rgba(255,255,255,0.06)",
+                borderRadius: "3px",
+                overflow: "hidden",
+                marginBottom: "2rem",
+              }}
+            >
+              <div
+                style={{
+                  height: "100%",
+                  width: `${planProgressPercent}%`,
+                  background: isPlanHovered
+                    ? "var(--accent)"
+                    : "linear-gradient(90deg, var(--primary) 0%, #F59E0B 100%)",
+                  boxShadow: "0 0 10px rgba(232, 85, 7, 0.5)",
+                  transition: "width 50ms linear",
+                }}
+              />
+            </div>
+          )}
+
+          {/* Dynamic Plan Cards Grid */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                (planSlides[planSlideIndex] || []).length === 1
+                  ? "minmax(320px, 460px)"
+                  : (planSlides[planSlideIndex] || []).length === 2
+                  ? "repeat(auto-fit, minmax(320px, 440px))"
+                  : "repeat(3, 1fr)",
+              justifyContent: "center",
+              gap: "1.75rem",
+              alignItems: "stretch",
+              maxWidth: (planSlides[planSlideIndex] || []).length === 1 ? "460px" : undefined,
+              margin: (planSlides[planSlideIndex] || []).length === 1 ? "0 auto" : undefined,
+            }}
+          >
+            {(planSlides[planSlideIndex] || []).map((item: any, idx: number) => {
+              const isPopular = item.popular;
+              return (
+                <div
+                  key={`${item.cookId}_${item.planId}_${idx}`}
+                  style={{
+                    background: "var(--surface)",
+                    borderRadius: "20px",
+                    border: isPopular ? "2px solid var(--primary)" : "1px solid var(--border)",
+                    boxShadow: isPopular
+                      ? "0 18px 45px rgba(232, 85, 7, 0.18)"
+                      : "0 12px 30px rgba(0,0,0,0.12)",
+                    padding: "1.75rem",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    position: "relative",
+                    transition: "transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease",
+                  }}
+                  className="kitchen-plan-card"
+                >
+                  {/* Popular / Best Value Ribbon */}
+                  {isPopular && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: -12,
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        background: "linear-gradient(135deg, var(--primary) 0%, #F59E0B 100%)",
+                        color: "#fff",
+                        fontSize: "0.7rem",
+                        fontWeight: 800,
+                        fontFamily: "Poppins",
+                        padding: "0.25rem 0.9rem",
+                        borderRadius: "999px",
+                        boxShadow: "0 4px 12px rgba(232, 85, 7, 0.35)",
+                        letterSpacing: "0.04em",
+                        textTransform: "uppercase",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        whiteSpace: "nowrap",
+                        zIndex: 2,
+                      }}
+                    >
+                      <Flame size={12} /> Most Popular Choice
+                    </div>
+                  )}
+
+                  <div>
+                    {/* Kitchen Profile Header Row */}
+                    <Link
+                      href={`/cooks/${item.cookId}`}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.75rem",
+                        textDecoration: "none",
+                        marginBottom: "1.25rem",
+                        paddingBottom: "1rem",
+                        borderBottom: "1px solid var(--border)",
+                      }}
+                    >
+                      <div style={{ position: "relative" }}>
+                        <img
+                          src={item.avatar}
+                          alt={item.kitchenName}
+                          style={{
+                            width: 52,
+                            height: 52,
+                            borderRadius: "14px",
+                            objectFit: "cover",
+                            border: "2px solid var(--border)",
+                          }}
                         />
-                        <span style={{ fontSize: "0.875rem", color: enabled ? "var(--text)" : "var(--text-muted)", opacity: enabled ? 1 : 0.6 }}>
-                          {f.feature}
+                        <span
+                          style={{
+                            position: "absolute",
+                            bottom: -3,
+                            right: -3,
+                            background: "#22c55e",
+                            color: "#fff",
+                            borderRadius: "50%",
+                            width: 16,
+                            height: 16,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "10px",
+                            boxShadow: "0 0 4px rgba(0,0,0,0.4)",
+                          }}
+                          title="FSSAI Verified Kitchen"
+                        >
+                          ✓
                         </span>
                       </div>
-                    );
-                  })}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <h4
+                            style={{
+                              fontFamily: "Poppins",
+                              fontWeight: 700,
+                              fontSize: "1.05rem",
+                              color: "var(--text)",
+                              margin: 0,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {item.kitchenName}
+                          </h4>
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.4rem",
+                            fontSize: "0.8125rem",
+                            color: "var(--text-muted)",
+                            marginTop: 2,
+                          }}
+                        >
+                          <MapPin size={12} style={{ color: "var(--primary)", flexShrink: 0 }} />
+                          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {item.area || item.city}
+                          </span>
+                          <span>•</span>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 2, color: "var(--accent)", fontWeight: 700 }}>
+                            <Star size={11} fill="var(--accent)" />
+                            {item.rating}
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+
+                    {/* Plan Type Badge & Name */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.6rem" }}>
+                      <span
+                        style={{
+                          fontSize: "0.75rem",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                          padding: "0.2rem 0.65rem",
+                          borderRadius: "6px",
+                          background:
+                            item.planType === "monthly"
+                              ? "rgba(139, 92, 246, 0.15)"
+                              : item.planType === "weekly"
+                              ? "rgba(232, 85, 7, 0.15)"
+                              : "rgba(59, 130, 246, 0.15)",
+                          color:
+                            item.planType === "monthly"
+                              ? "#a78bfa"
+                              : item.planType === "weekly"
+                              ? "var(--primary)"
+                              : "#60a5fa",
+                        }}
+                      >
+                        {item.planType.toUpperCase()} PLAN
+                      </span>
+                      {item.isVeg && (
+                        <span
+                          style={{
+                            fontSize: "0.7rem",
+                            fontWeight: 700,
+                            color: "#22c55e",
+                            background: "rgba(34, 197, 94, 0.1)",
+                            padding: "0.15rem 0.5rem",
+                            borderRadius: "4px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 3,
+                          }}
+                        >
+                          <Leaf size={11} /> Pure Veg
+                        </span>
+                      )}
+                    </div>
+
+                    <h3
+                      style={{
+                        fontFamily: "Poppins",
+                        fontWeight: 700,
+                        fontSize: "1.25rem",
+                        color: "var(--text)",
+                        marginBottom: "0.5rem",
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      {item.label}
+                    </h3>
+
+                    {/* Pricing */}
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "0.35rem", marginBottom: "0.25rem" }}>
+                      <span
+                        style={{
+                          fontFamily: "Poppins",
+                          fontWeight: 800,
+                          fontSize: "2rem",
+                          color: "var(--primary)",
+                          lineHeight: 1,
+                        }}
+                      >
+                        ₹{item.price.toLocaleString("en-IN")}
+                      </span>
+                      <span style={{ fontSize: "0.875rem", color: "var(--text-muted)", fontWeight: 600 }}>
+                        {item.period}
+                      </span>
+                      <span
+                        style={{
+                          marginLeft: "auto",
+                          fontSize: "0.8rem",
+                          background: "var(--surface-alt)",
+                          padding: "0.2rem 0.55rem",
+                          borderRadius: "6px",
+                          color: "var(--text)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        ₹{item.perMeal}/meal
+                      </span>
+                    </div>
+
+                    {/* Savings / Benefits tag */}
+                    <div
+                      style={{
+                        fontSize: "0.8125rem",
+                        color: "var(--secondary)",
+                        fontWeight: 700,
+                        marginBottom: "1rem",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <Sparkles size={13} /> {item.savings}
+                    </div>
+
+                    {/* Description */}
+                    <p
+                      style={{
+                        fontSize: "0.875rem",
+                        color: "var(--text-muted)",
+                        lineHeight: 1.5,
+                        marginBottom: "1.25rem",
+                        minHeight: "2.6rem",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {item.description}
+                    </p>
+
+                    {/* Included Items Checklist */}
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "0.55rem",
+                        marginBottom: "1.25rem",
+                        background: "var(--surface-alt)",
+                        padding: "1rem",
+                        borderRadius: "12px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: "0.75rem",
+                          fontWeight: 700,
+                          color: "var(--text-muted)",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          marginBottom: "0.25rem",
+                        }}
+                      >
+                        What's Included:
+                      </div>
+                      {item.includes.slice(0, 4).map((inc: string, i: number) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                          <CheckCircle
+                            size={14}
+                            style={{ color: "#22c55e", flexShrink: 0 }}
+                            fill="#22c55e"
+                          />
+                          <span style={{ fontSize: "0.8125rem", color: "var(--text)", fontWeight: 500 }}>
+                            {inc}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Kitchen Special Item Preview */}
+                    {item.specialItem && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          fontSize: "0.75rem",
+                          color: "var(--text-muted)",
+                          marginBottom: "1.25rem",
+                          padding: "0.4rem 0.75rem",
+                          background: "rgba(232, 85, 7, 0.06)",
+                          borderRadius: "8px",
+                          border: "1px dashed rgba(232, 85, 7, 0.25)",
+                        }}
+                      >
+                        <ChefHat size={14} style={{ color: "var(--primary)", flexShrink: 0 }} />
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          Chef Signature: <strong style={{ color: "var(--text)" }}>{item.specialItem}</strong>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                    <Link
+                      href={`/checkout?cook=${item.cookId}&plan=${item.planId}`}
+                      className="btn btn-primary"
+                      style={{
+                        width: "100%",
+                        justifyContent: "center",
+                        fontWeight: 700,
+                        fontSize: "0.9375rem",
+                        padding: "0.75rem 1rem",
+                        boxShadow: isPopular ? "0 8px 20px rgba(232, 85, 7, 0.3)" : undefined,
+                      }}
+                      id={`subscribe-${item.cookId}-${item.planId}`}
+                    >
+                      Subscribe to {item.kitchenName.split(" ")[0]} <ArrowRight size={16} />
+                    </Link>
+                    <Link
+                      href={`/cooks/${item.cookId}`}
+                      style={{
+                        textAlign: "center",
+                        fontSize: "0.8125rem",
+                        color: "var(--text-muted)",
+                        textDecoration: "none",
+                        fontWeight: 600,
+                        padding: "0.25rem",
+                      }}
+                    >
+                      View {item.kitchenName}'s Full Menu →
+                    </Link>
+                  </div>
                 </div>
-                <Link
-                  href="/search"
-                  className={`btn ${plan.popular ? "btn-primary" : "btn-outline"}`}
-                  style={{ width: "100%", justifyContent: "center" }}
-                  id={`plan-${plan.type.toLowerCase()}-cta`}
-                >
-                  Get {plan.type} Plan
-                </Link>
-              </div>
-            ))}
+              );
+            })}
           </div>
+
+          {/* Slide Indicator Dots & Quick Navigation */}
+          {planSlides.length > 1 && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: "0.5rem",
+                marginTop: "2.5rem",
+              }}
+            >
+              {planSlides.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setPlanSlideIndex(i);
+                    setPlanProgressPercent(0);
+                  }}
+                  style={{
+                    width: planSlideIndex === i ? 28 : 10,
+                    height: 10,
+                    borderRadius: "999px",
+                    background: planSlideIndex === i ? "var(--primary)" : "var(--border)",
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "all 0.3s ease",
+                    boxShadow: planSlideIndex === i ? "0 0 10px rgba(232, 85, 7, 0.5)" : "none",
+                  }}
+                  aria-label={`Jump to kitchen slide ${i + 1}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
+
         <style jsx>{`
-          @media (max-width: 768px) {
-            div[style*="repeat(3, 1fr)"] { grid-template-columns: 1fr !important; }
+          @media (max-width: 992px) {
+            div[style*="repeat(3, 1fr)"] {
+              grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+            }
+          }
+          @media (max-width: 640px) {
+            div[style*="repeat(3, 1fr)"] {
+              grid-template-columns: 1fr !important;
+            }
+          }
+          .kitchen-plan-card:hover {
+            transform: translateY(-6px);
+            border-color: var(--primary) !important;
+            box-shadow: 0 20px 40px rgba(232, 85, 7, 0.16) !important;
+          }
+          .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+          }
+          .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
           }
         `}</style>
       </section>

@@ -12,17 +12,21 @@ export async function GET(request: Request) {
     if (status) where.status = status.toUpperCase();
 
     if (cookId) {
+      const orConditions: any[] = [{ id: cookId }, { userId: cookId }];
+      if (cookId.includes("@")) {
+        orConditions.push({ user: { email: { equals: cookId, mode: "insensitive" } } });
+      }
+      orConditions.push({ kitchenName: { contains: cookId.replace(/^c_/, ""), mode: "insensitive" } });
+
       const matchedCook = await prisma.cook.findFirst({
         where: {
-          OR: [
-            { id: cookId },
-            { userId: cookId },
-            { kitchenName: { contains: cookId.replace(/^c_/, ""), mode: "insensitive" } },
-          ],
+          OR: orConditions,
         },
       });
       if (matchedCook) {
         where.cookId = matchedCook.id;
+      } else {
+        where.cookId = "NO_MATCHING_COOK";
       }
     }
 
@@ -85,13 +89,22 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
+    const orCookConditions: any[] = [];
+    if (body.cookId) orCookConditions.push({ id: body.cookId }, { userId: body.cookId });
+    if (body.cookName) {
+      orCookConditions.push(
+        { kitchenName: { equals: body.cookName, mode: "insensitive" } },
+        { kitchenName: { contains: body.cookName, mode: "insensitive" } }
+      );
+    }
+
     const targetCook =
-      (await prisma.cook.findFirst({
-        where: {
-          OR: [{ id: body.cookId }, { kitchenName: { contains: body.cookName || "Jeet", mode: "insensitive" } }],
-        },
-        include: { plans: true },
-      })) || (await prisma.cook.findFirst({ include: { plans: true } }))!;
+      (orCookConditions.length > 0
+        ? await prisma.cook.findFirst({
+            where: { OR: orCookConditions },
+            include: { plans: true },
+          })
+        : null) || (await prisma.cook.findFirst({ include: { plans: true } }))!;
 
     const targetUser =
       (await prisma.user.findFirst({

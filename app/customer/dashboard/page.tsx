@@ -68,8 +68,8 @@ export default function CustomerDashboardPage() {
   const [cutoffWarning, setCutoffWarning] = useState("");
   const [currentUser, setCurrentUser] = useState<{ id?: string; name: string; email: string; city: string }>({
     id: "usr_customer_1",
-    name: "Customer",
-    email: "customer@homefeast.in",
+    name: "Pooja Patel",
+    email: "demo@customer.com",
     city: "Rajkot",
   });
 
@@ -335,7 +335,7 @@ export default function CustomerDashboardPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         cookId: "c1",
-        customerName: currentUser?.name || "Priya Sharma",
+        customerName: currentUser?.name || "Pooja Patel",
         rating: Number(newReview.rating) || 5,
         comment: newReview.comment.trim(),
       }),
@@ -897,7 +897,7 @@ export default function CustomerDashboardPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
                 <div>
                   <label className="label">Full Name</label>
-                  <input type="text" className="input" defaultValue="Arjun Verma" />
+                  <input type="text" className="input" defaultValue="Pooja Patel" />
                 </div>
                 <div>
                   <label className="label">Mobile Number</label>
@@ -907,12 +907,12 @@ export default function CustomerDashboardPage() {
 
               <div style={{ marginBottom: "1rem" }}>
                 <label className="label">Email Address</label>
-                <input type="email" className="input" defaultValue="arjun.verma@example.com" />
+                <input type="email" className="input" defaultValue="demo@customer.com" />
               </div>
 
               <div style={{ marginBottom: "1rem" }}>
                 <label className="label">Primary Delivery Address</label>
-                <textarea rows={2} className="input" defaultValue="Flat 402, Royal Residency, Opp. Reliance Mall, Race Course, Rajkot - 360001" />
+                <textarea rows={2} className="input" defaultValue="Flat 402, Radhika Residency, Kalavad Road, Rajkot - 360005" />
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>

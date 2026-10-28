@@ -15,7 +15,7 @@ import {
   Map,
   LayoutGrid,
 } from "lucide-react";
-import { COOKS, CUISINES, CITIES } from "@/lib/mockData";
+import { CUISINES, CITIES } from "@/lib/mockData";
 
 const CookMap = dynamic(() => import("@/components/CookMap"), {
   ssr: false,
@@ -50,14 +50,15 @@ function SearchContent() {
   const [maxPrice, setMaxPrice] = useState(5000);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
-  const [allCooks, setAllCooks] = useState<any[]>(COOKS);
+  const [allCooks, setAllCooks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Dynamically load registered cooks from localStorage, active profile, and API
+  // Load real registered cooks from PostgreSQL API & local user-created profile
   useEffect(() => {
     if (typeof window !== "undefined") {
       let localCooks: any[] = [];
 
-      // 1. From hf_registered_cooks
+      // 1. From hf_registered_cooks (local registrations)
       try {
         const stored = localStorage.getItem("hf_registered_cooks");
         if (stored) {
@@ -99,54 +100,41 @@ function SearchContent() {
                 { id: `p_${cookId}_weekly`, type: "weekly", label: "Weekly Saver Plan", price: 749, perMeal: 107, description: "7-day variety plan with Sunday sweet special.", includes: ["Sabzi", "Dal/Kadhi", "Rotis", "Rice", "Sweet"], popular: true },
                 { id: `p_${cookId}_monthly`, type: "monthly", label: "Monthly Royal Plan", price: 2799, perMeal: 93, description: "30-day meal plan. Pause anytime.", includes: ["Full Thali", "Special Sundays", "5 Skips"] },
               ],
-              weeklyMenu: {
-                Monday: ["Sev Tameta Nu Shaak", "Bhindi Masala", "Phulka Rotis", "Gujarati Kadhi", "Jeera Rice"],
-                Tuesday: ["Kathiyawadi Ringan No Olo", "Bajra No Rotlo with Makhan", "Desi Kadhi", "Vaghareli Khichdi"],
-                Wednesday: ["Surti Undhiyu", "Puri / Phulkas", "Dal Fry", "Vegetable Pulao", "Jalebi (2 pcs)"],
-                Thursday: ["Gatta Nu Shaak", "Aloo Gobi Matar", "Phulka Rotis", "Toor Dal Fry", "Steamed Rice"],
-                Friday: ["Lasaniya Batata", "Gujarati Bhakri", "Desi Chhach", "Plain Khichdi", "Garlic Chutney"],
-                Saturday: ["Chole Masala", "Bhature / Phulkas", "Dal Tadka", "Peas Pulao", "Sweet Lassi"],
-                Sunday: ["Royal Kathiyawadi Thali", "Bajra Rotlo", "Special Dal", "Basundi with Dry Fruits"],
-              },
             });
           }
         }
       } catch {}
 
-      // 3. Fetch from /api/v1/cooks to get server-persisted cooks
+      // 3. Fetch from /api/v1/cooks (PostgreSQL database - real data)
       fetch("/api/v1/cooks")
         .then((res) => res.json())
         .then((data) => {
           const serverCooks = data.success && Array.isArray(data.data) ? data.data : [];
-          const combined = [...localCooks, ...serverCooks, ...COOKS];
-          const seen: Record<string, boolean> = {};
+          // Prioritize PostgreSQL database cooks, then unique local records
+          const combined = [...serverCooks, ...localCooks];
+          const seenNames = new Set<string>();
+          const seenIds = new Set<string>();
           const uniqueList: any[] = [];
           for (const c of combined) {
-            const key = (c.id || c.kitchenName || "").toLowerCase();
-            if (key && !seen[key]) {
-              seen[key] = true;
-              uniqueList.push(c);
+            const normName = (c.kitchenName || c.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            const normId = (c.id || "").toLowerCase();
+            if ((normName && seenNames.has(normName)) || (normId && seenIds.has(normId))) {
+              continue;
             }
+            if (normName) seenNames.add(normName);
+            if (normId) seenIds.add(normId);
+            uniqueList.push(c);
           }
           setAllCooks(uniqueList);
         })
         .catch(() => {
-          const combined = [...localCooks, ...COOKS];
-          const seen: Record<string, boolean> = {};
-          const uniqueList: any[] = [];
-          for (const c of combined) {
-            const key = (c.id || c.kitchenName || "").toLowerCase();
-            if (key && !seen[key]) {
-              seen[key] = true;
-              uniqueList.push(c);
-            }
-          }
-          setAllCooks(uniqueList);
-        });
+          setAllCooks(localCooks);
+        })
+        .finally(() => setLoading(false));
     }
   }, []);
 
-  // Filter cooks
+  // Filter cooks based on user criteria
   const filtered = allCooks.filter((c) => {
     if (selectedCity) {
       const qCity = selectedCity.trim().toLowerCase();
@@ -154,10 +142,16 @@ function SearchContent() {
       const targetCityName = matchedCity ? matchedCity.name.toLowerCase() : qCity;
       if (c.city?.toLowerCase() !== targetCityName) return false;
     }
+
+    const cCuisines: string[] = Array.isArray(c.cuisines)
+      ? c.cuisines.map((x: any) => (typeof x === "string" ? x.toLowerCase() : x?.name?.toLowerCase() || ""))
+      : [];
+
     if (mealType === "veg" && !c.isVeg) return false;
     if (mealType === "nonveg" && c.isVeg) return false;
-    if (mealType === "jain" && !c.cuisines?.includes("jain")) return false;
-    if (selectedCuisine && !c.cuisines?.includes(selectedCuisine)) return false;
+    if (mealType === "jain" && !cCuisines.some((cui) => cui.includes("jain"))) return false;
+    if (selectedCuisine && !cCuisines.some((cui) => cui.includes(selectedCuisine.toLowerCase()))) return false;
+
     if (planType && planType !== "all") {
       const hasPlan = c.plans?.some((p: any) => p.type?.toLowerCase() === planType.toLowerCase());
       if (!hasPlan) return false;
@@ -172,7 +166,7 @@ function SearchContent() {
       const matchesCook = c.name?.toLowerCase().includes(q);
       const matchesArea = c.area?.toLowerCase().includes(q);
       const matchesCity = c.city?.toLowerCase().includes(q);
-      const matchesCuisine = Array.isArray(c.cuisines) && c.cuisines.some((cui: string) => cui.toLowerCase().includes(q));
+      const matchesCuisine = cCuisines.some((cui: string) => cui.includes(q));
       if (!matchesKitchen && !matchesCook && !matchesArea && !matchesCity && !matchesCuisine) return false;
     }
     return true;
@@ -190,9 +184,21 @@ function SearchContent() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
       {/* Search Header */}
-      <div style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", padding: "1.5rem 0", position: "sticky", top: 72, zIndex: 100 }}>
+      <div
+        style={{
+          background: "var(--surface)",
+          borderBottom: "1px solid var(--border)",
+          padding: "1rem 0",
+          position: "sticky",
+          top: 72,
+          zIndex: 900,
+          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
+          backdropFilter: "blur(12px)",
+        }}
+      >
         <div className="container-custom">
-          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
+          {/* Top Controls Row */}
+          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center", marginBottom: "0.75rem" }}>
             {/* Search Input */}
             <div
               style={{
@@ -206,27 +212,27 @@ function SearchContent() {
                 padding: "0.5rem 1rem",
               }}
             >
-              <Search size={18} style={{ color: "var(--text-muted)" }} />
+              <Search size={18} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
               <input
                 id="cook-search-input"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search cooks, kitchen names..."
                 className="input-base"
-                style={{ border: "none", background: "transparent", padding: 0, minHeight: "auto" }}
+                style={{ border: "none", background: "transparent", padding: 0, minHeight: "auto", width: "100%" }}
                 aria-label="Search cooks"
               />
             </div>
 
             {/* City Filter */}
-            <div style={{ position: "relative" }}>
+            <div style={{ position: "relative", minWidth: 160 }}>
               <MapPin size={16} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--primary)", pointerEvents: "none" }} />
               <select
                 id="city-filter"
                 value={selectedCity}
                 onChange={(e) => setSelectedCity(e.target.value)}
                 className="input-base"
-                style={{ paddingLeft: "2rem", paddingRight: "2rem", minWidth: 150, cursor: "pointer" }}
+                style={{ paddingLeft: "2rem", paddingRight: "2rem", width: "100%", cursor: "pointer" }}
                 aria-label="Filter by city"
               >
                 <option value="">All Cities</option>
@@ -235,7 +241,7 @@ function SearchContent() {
             </div>
 
             {/* Meal Type */}
-            <div style={{ display: "flex", gap: "0.375rem" }}>
+            <div style={{ display: "flex", gap: "0.375rem", flexWrap: "wrap" }}>
               {[["all", "All"], ["veg", "🟢 Veg"], ["nonveg", "🔴 Non-Veg"], ["jain", "🌿 Jain"]].map(([val, label]) => (
                 <button
                   key={val}
@@ -247,77 +253,85 @@ function SearchContent() {
                 </button>
               ))}
             </div>
+          </div>
 
+          {/* Sub Row: Sort, View Switcher & Expand Filters */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
             {/* Sort */}
-            <select
-              id="sort-select"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="input-base"
-              style={{ minWidth: 150, cursor: "pointer" }}
-              aria-label="Sort by"
-            >
-              <option value="rating">Sort: Best Rated</option>
-              <option value="price">Sort: Price Low–High</option>
-              <option value="reviews">Sort: Most Reviews</option>
-            </select>
-
-            {/* View Mode Toggle: List vs Map */}
-            <div style={{ display: "flex", border: "1.5px solid var(--border)", borderRadius: "var(--radius-sm)", overflow: "hidden", background: "var(--surface-alt)" }}>
-              <button
-                type="button"
-                onClick={() => setViewMode("list")}
-                id="view-list-btn"
-                style={{
-                  padding: "0.5rem 0.875rem",
-                  background: viewMode === "list" ? "var(--primary)" : "transparent",
-                  color: viewMode === "list" ? "white" : "var(--text-muted)",
-                  border: "none",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.35rem",
-                  fontSize: "0.8125rem",
-                  fontWeight: 600,
-                  transition: "all 0.15s ease",
-                }}
+            <div style={{ minWidth: 170 }}>
+              <select
+                id="sort-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="input-base"
+                style={{ width: "auto", minWidth: 170, cursor: "pointer" }}
+                aria-label="Sort by"
               >
-                <LayoutGrid size={15} /> List
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("map")}
-                id="view-map-btn"
-                style={{
-                  padding: "0.5rem 0.875rem",
-                  background: viewMode === "map" ? "var(--primary)" : "transparent",
-                  color: viewMode === "map" ? "white" : "var(--text-muted)",
-                  border: "none",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.35rem",
-                  fontSize: "0.8125rem",
-                  fontWeight: 600,
-                  transition: "all 0.15s ease",
-                }}
-              >
-                <Map size={15} /> Map View
-              </button>
+                <option value="rating">Sort: Best Rated</option>
+                <option value="price">Sort: Price Low–High</option>
+                <option value="reviews">Sort: Most Reviews</option>
+              </select>
             </div>
 
-            {/* More Filters Toggle */}
-            <button
-              id="toggle-filters-btn"
-              onClick={() => setShowFilters(!showFilters)}
-              className="btn btn-ghost"
-              style={{ gap: "0.375rem" }}
-              aria-expanded={showFilters}
-            >
-              <SlidersHorizontal size={16} />
-              Filters
-              <ChevronDown size={14} style={{ transform: showFilters ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-            </button>
+            {/* Right: View Toggle + More Filters */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+              {/* View Mode Toggle: List vs Map */}
+              <div style={{ display: "flex", border: "1.5px solid var(--border)", borderRadius: "var(--radius-sm)", overflow: "hidden", background: "var(--surface-alt)" }}>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  id="view-list-btn"
+                  style={{
+                    padding: "0.5rem 0.875rem",
+                    background: viewMode === "list" ? "var(--primary)" : "transparent",
+                    color: viewMode === "list" ? "white" : "var(--text-muted)",
+                    border: "none",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.35rem",
+                    fontSize: "0.8125rem",
+                    fontWeight: 600,
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <LayoutGrid size={15} /> List
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("map")}
+                  id="view-map-btn"
+                  style={{
+                    padding: "0.5rem 0.875rem",
+                    background: viewMode === "map" ? "var(--primary)" : "transparent",
+                    color: viewMode === "map" ? "white" : "var(--text-muted)",
+                    border: "none",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.35rem",
+                    fontSize: "0.8125rem",
+                    fontWeight: 600,
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <Map size={15} /> Map View
+                </button>
+              </div>
+
+              {/* More Filters Toggle */}
+              <button
+                id="toggle-filters-btn"
+                onClick={() => setShowFilters(!showFilters)}
+                className="btn btn-ghost"
+                style={{ gap: "0.375rem" }}
+                aria-expanded={showFilters}
+              >
+                <SlidersHorizontal size={16} />
+                Filters
+                <ChevronDown size={14} style={{ transform: showFilters ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+              </button>
+            </div>
           </div>
 
           {/* Expanded Filters */}
@@ -389,7 +403,12 @@ function SearchContent() {
           </h1>
         </div>
 
-        {viewMode === "map" ? (
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "5rem 0" }}>
+            <div className="spinner" style={{ margin: "0 auto 1rem" }} />
+            <p style={{ color: "var(--text-muted)", fontSize: "0.9375rem" }}>Loading verified kitchens from database...</p>
+          </div>
+        ) : viewMode === "map" ? (
           <CookMap cooks={filtered} selectedCity={selectedCity} />
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: "4rem 0" }}>

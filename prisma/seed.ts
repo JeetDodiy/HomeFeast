@@ -53,9 +53,9 @@ async function main() {
 
   const admin = await prisma.user.upsert({
     where: { email: "admin@homefeast.in" },
-    update: { passwordHash: adminPwdHash },
+    update: { name: "Jeet Dodiya (Admin)", passwordHash: adminPwdHash },
     create: {
-      name: "Super Admin",
+      name: "Jeet Dodiya (Admin)",
       email: "admin@homefeast.in",
       phone: "9999999999",
       passwordHash: adminPwdHash,
@@ -68,25 +68,25 @@ async function main() {
   // 4. Seed Customers (including demo@customer.com)
   const demoCustomer = await prisma.user.upsert({
     where: { email: "demo@customer.com" },
-    update: { passwordHash: demoPwdHash },
+    update: { name: "Pooja Patel", passwordHash: demoPwdHash },
     create: {
-      name: "Priya Sharma",
+      name: "Pooja Patel",
       email: "demo@customer.com",
       phone: "9876543210",
       passwordHash: demoPwdHash,
       role: Role.CUSTOMER,
       cityId: rajkot.id,
-      address: "Flat 402, Royal Residency, Race Course, Rajkot",
-      pincode: "360001",
+      address: "Flat 402, Radhika Residency, Kalavad Road, Rajkot",
+      pincode: "360005",
       isVerified: true,
     },
   });
 
   const customer1 = await prisma.user.upsert({
     where: { email: "arjun.verma@example.com" },
-    update: {},
+    update: { name: "Bhavin Vaghani" },
     create: {
-      name: "Arjun Verma",
+      name: "Bhavin Vaghani",
       email: "arjun.verma@example.com",
       phone: "9825123456",
       passwordHash: "$2b$10$1V5UqC1l6fGfT8fO3c1F9O5W/e/yY7P6A9vG.X/T0H0W0V0V0V0V0",
@@ -115,6 +115,8 @@ async function main() {
       fssai: "10020042007891",
       rating: 4.9,
       reviews: 184,
+      coverImage: "https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?w=800&q=80",
+      photos: ["https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?w=600&q=80"],
     },
     {
       name: "Meenaben Patel",
@@ -129,6 +131,8 @@ async function main() {
       fssai: "10020042003854",
       rating: 4.9,
       reviews: 142,
+      coverImage: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=800&q=80",
+      photos: ["https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=600&q=80"],
     },
     {
       name: "Meera Patel",
@@ -143,6 +147,8 @@ async function main() {
       fssai: "10020042003854",
       rating: 4.8,
       reviews: 142,
+      coverImage: "https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=800&q=80",
+      photos: ["https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=600&q=80"],
     },
     {
       name: "Priya Shah",
@@ -157,6 +163,8 @@ async function main() {
       fssai: "10020042003855",
       rating: 4.6,
       reviews: 89,
+      coverImage: "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=800&q=80",
+      photos: ["https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=600&q=80"],
     },
     {
       name: "Suman Joshi",
@@ -171,6 +179,8 @@ async function main() {
       fssai: "10020042003856",
       rating: 4.9,
       reviews: 210,
+      coverImage: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80",
+      photos: ["https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=600&q=80"],
     },
     {
       name: "Ramesh Bhai",
@@ -185,6 +195,8 @@ async function main() {
       fssai: "10020042003857",
       rating: 4.7,
       reviews: 115,
+      coverImage: "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=800&q=80",
+      photos: ["https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=600&q=80"],
     },
     {
       name: "Neelam Sharma",
@@ -199,6 +211,8 @@ async function main() {
       fssai: "10020042003858",
       rating: 4.8,
       reviews: 95,
+      coverImage: "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=800&q=80",
+      photos: ["https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=600&q=80"],
     },
     {
       name: "Bhavna Ben",
@@ -213,6 +227,8 @@ async function main() {
       fssai: "10020042003859",
       rating: 4.9,
       reviews: 178,
+      coverImage: "https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?w=800&q=80",
+      photos: ["https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?w=600&q=80"],
     },
     {
       name: "Rekha Iyer",
@@ -227,6 +243,8 @@ async function main() {
       fssai: "10020042003860",
       rating: 4.7,
       reviews: 130,
+      coverImage: "https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=800&q=80",
+      photos: ["https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=600&q=80"],
     },
     {
       name: "Geeta Parmar",
@@ -241,6 +259,8 @@ async function main() {
       fssai: "10020042003861",
       rating: 4.5,
       reviews: 64,
+      coverImage: "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800&q=80",
+      photos: ["https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&q=80"],
     },
     {
       name: "Jasbir Singh",
@@ -255,6 +275,8 @@ async function main() {
       fssai: "10020042003862",
       rating: 4.6,
       reviews: 82,
+      coverImage: "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800&q=80",
+      photos: ["https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=600&q=80"],
     },
     {
       name: "Komal Vora",
@@ -269,6 +291,8 @@ async function main() {
       fssai: "10020042003863",
       rating: 4.8,
       reviews: 140,
+      coverImage: "https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=800&q=80",
+      photos: ["https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=600&q=80"],
     },
     {
       name: "Anjali Gupta",
@@ -283,6 +307,8 @@ async function main() {
       fssai: "10020042003864",
       rating: 4.7,
       reviews: 98,
+      coverImage: "https://images.unsplash.com/photo-1543353071-873f17a7a088?w=800&q=80",
+      photos: ["https://images.unsplash.com/photo-1543353071-873f17a7a088?w=600&q=80"],
     },
     {
       name: "Suresh Patel",
@@ -297,6 +323,8 @@ async function main() {
       fssai: "10020042003865",
       rating: 4.6,
       reviews: 45,
+      coverImage: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=800&q=80",
+      photos: ["https://images.unsplash.com/photo-1601050690597-df0568f70950?w=600&q=80"],
     },
   ];
 
@@ -319,12 +347,16 @@ async function main() {
 
     const cook = await prisma.cook.upsert({
       where: { userId: cookUser.id },
-      update: {},
+      update: {
+        coverImage: c.coverImage,
+        photos: c.photos,
+      },
       create: {
         userId: cookUser.id,
         kitchenName: c.kitchen,
         bio: `Fresh homemade meals prepared with love by ${c.name}. FSSAI certified kitchen.`,
-        coverImage: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80",
+        coverImage: c.coverImage,
+        photos: c.photos,
         fssaiNo: c.fssai,
         cityId: c.city,
         area: c.area,
@@ -339,40 +371,64 @@ async function main() {
       },
     });
 
-    // Plans for each cook
-    await prisma.plan.createMany({
-      data: [
-        {
-          cookId: cook.id,
-          name: "Daily Plan",
-          type: PlanDuration.DAILY,
-          price: 120,
-          perMeal: 120,
-          description: "Fresh homemade tiffin every day. Cancel anytime.",
-          includes: ["1 Dal", "2 Sabzi", "4 Phulkas", "Rice", "Salad & Papad"],
+    // Plans for each cook (deterministic IDs to prevent duplication)
+    const seedPlans = [
+      {
+        id: `p_${cook.id}_daily`,
+        name: "Daily Plan",
+        type: PlanDuration.DAILY,
+        price: 120,
+        perMeal: 120,
+        description: "Fresh homemade tiffin every day. Cancel anytime.",
+        includes: ["1 Dal", "2 Sabzi", "4 Phulkas", "Rice", "Salad & Papad"],
+        popular: false,
+      },
+      {
+        id: `p_${cook.id}_weekly`,
+        name: "Weekly Plan",
+        type: PlanDuration.WEEKLY,
+        price: 749,
+        perMeal: 107,
+        description: "7-day subscription plan. Save 11%.",
+        includes: ["Full Thali", "Weekend Special", "Free Delivery"],
+        popular: true,
+      },
+      {
+        id: `p_${cook.id}_monthly`,
+        name: "Monthly Plan",
+        type: PlanDuration.MONTHLY,
+        price: 2799,
+        perMeal: 93,
+        description: "30-day value plan with up to 5 paused delivery days.",
+        includes: ["Daily Thali", "Special Sundays", "5 Pause Days Allowed"],
+        popular: false,
+      },
+    ];
+
+    for (const p of seedPlans) {
+      await prisma.plan.upsert({
+        where: { id: p.id },
+        update: {
+          name: p.name,
+          price: p.price,
+          perMeal: p.perMeal,
+          description: p.description,
+          includes: p.includes,
+          popular: p.popular,
         },
-        {
+        create: {
+          id: p.id,
           cookId: cook.id,
-          name: "Weekly Plan",
-          type: PlanDuration.WEEKLY,
-          price: 749,
-          perMeal: 107,
-          description: "7-day subscription plan. Save 11%.",
-          includes: ["Full Thali", "Weekend Special", "Free Delivery"],
-          popular: true,
+          name: p.name,
+          type: p.type,
+          price: p.price,
+          perMeal: p.perMeal,
+          description: p.description,
+          includes: p.includes,
+          popular: p.popular,
         },
-        {
-          cookId: cook.id,
-          name: "Monthly Plan",
-          type: PlanDuration.MONTHLY,
-          price: 2799,
-          perMeal: 93,
-          description: "30-day value plan with up to 5 paused delivery days.",
-          includes: ["Daily Thali", "Special Sundays", "5 Pause Days Allowed"],
-        },
-      ],
-      skipDuplicates: true,
-    });
+      });
+    }
   }
   console.log("✓ Seeded 12 verified cooks with plans & menus");
 

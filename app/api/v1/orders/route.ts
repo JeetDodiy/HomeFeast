@@ -5,25 +5,44 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
   const cookId = searchParams.get("cookId");
+  const cookEmail = searchParams.get("email");
+  const kitchen = searchParams.get("kitchen");
   const userId = searchParams.get("userId");
 
   try {
     const where: any = {};
     if (status) where.status = status.toUpperCase();
 
-    // If cookId or kitchen is specified
-    if (cookId) {
+    // If cookId, email, or kitchen is specified
+    if (cookId || cookEmail || kitchen) {
+      const orConditions: any[] = [];
+      if (cookId) {
+        orConditions.push({ id: cookId });
+        orConditions.push({ userId: cookId });
+        if (cookId.includes("@")) {
+          orConditions.push({ user: { email: { equals: cookId, mode: "insensitive" } } });
+        }
+      }
+      if (cookEmail) {
+        orConditions.push({ user: { email: { equals: cookEmail, mode: "insensitive" } } });
+      }
+      if (kitchen) {
+        const cleanK = kitchen.replace(/['’]s\s*Kitchen/i, "").trim();
+        orConditions.push({ kitchenName: { equals: kitchen, mode: "insensitive" } });
+        if (cleanK) {
+          orConditions.push({ kitchenName: { contains: cleanK, mode: "insensitive" } });
+        }
+      }
+
       const matchedCook = await prisma.cook.findFirst({
-        where: {
-          OR: [
-            { id: cookId },
-            { userId: cookId },
-            { kitchenName: { contains: cookId.replace(/^c_/, ""), mode: "insensitive" } },
-          ],
-        },
+        where: { OR: orConditions },
+        include: { user: true },
       });
       if (matchedCook) {
         where.cookId = matchedCook.id;
+      } else {
+        // Return 0 orders if cook specified does not exist
+        where.cookId = "NO_MATCHING_COOK";
       }
     }
 
@@ -69,11 +88,26 @@ export async function GET(request: Request) {
       packedItems: { sabzi: false, rotis: false, dal: false, rice: false },
     }));
 
+    // Deduplicate orders by ID or customer+slot+date
+    const seenOrderIds = new Set<string>();
+    const seenCustomerSlots = new Set<string>();
+    const deduplicatedOrders: typeof formatted = [];
+
+    for (const o of formatted) {
+      const slotKey = `${(o.customer || o.customerName || "").toLowerCase().trim()}_${(o.slot || "").toLowerCase().trim()}_${o.date || o.deliveryDate || ""}`;
+      if (seenOrderIds.has(o.id) || seenCustomerSlots.has(slotKey)) {
+        continue;
+      }
+      seenOrderIds.add(o.id);
+      seenCustomerSlots.add(slotKey);
+      deduplicatedOrders.push(o);
+    }
+
     return NextResponse.json({
       version: "v1",
       success: true,
-      count: formatted.length,
-      data: formatted,
+      count: deduplicatedOrders.length,
+      data: deduplicatedOrders,
     });
   } catch (error) {
     console.error("Orders GET error:", error);
@@ -86,16 +120,22 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     // 1. Resolve Cook in PostgreSQL
-    let targetCook = await prisma.cook.findFirst({
-      where: {
-        OR: [
-          { id: body.cookId },
-          { kitchenName: { equals: body.cookName || "", mode: "insensitive" } },
-          { kitchenName: { contains: "Jeet", mode: "insensitive" } },
-        ],
-      },
-      include: { plans: true },
-    });
+    const orCookConditions: any[] = [];
+    if (body.cookId) orCookConditions.push({ id: body.cookId }, { userId: body.cookId });
+    if (body.cookName) {
+      orCookConditions.push(
+        { kitchenName: { equals: body.cookName, mode: "insensitive" } },
+        { kitchenName: { contains: body.cookName, mode: "insensitive" } }
+      );
+    }
+
+    let targetCook = orCookConditions.length > 0
+      ? await prisma.cook.findFirst({
+          where: { OR: orCookConditions },
+          include: { plans: true },
+        })
+      : null;
+
     if (!targetCook) {
       targetCook = (await prisma.cook.findFirst({ include: { plans: true } }))!;
     }
