@@ -77,13 +77,44 @@ export default function CookProfilePage() {
           const p = JSON.parse(activeProfile);
           const cookId = `c_${(p.headCook || "cook").toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
           if (cookId === id || p.shopName?.toLowerCase() === id.toLowerCase()) {
+            // Load custom plans if configured by cook
+            let customPlans: any[] = [];
+            try {
+              const userCleanKey = (p.email || "").toLowerCase().replace(/[^a-z0-9]/g, "_");
+              const storedPlans = (userCleanKey && localStorage.getItem(`hf_cook_plans_${userCleanKey}`)) || localStorage.getItem("hf_cook_plans");
+              if (storedPlans) {
+                const parsed = JSON.parse(storedPlans);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  customPlans = parsed.map((pl: any, idx: number) => {
+                    const typeLower = (pl.type || (pl.billingCycle?.toLowerCase().includes("month") ? "monthly" : pl.billingCycle?.toLowerCase().includes("week") ? "weekly" : "daily")).toLowerCase();
+                    const cleanIncludes = Array.isArray(pl.includes) && pl.includes.length > 0
+                      ? pl.includes
+                      : typeof pl.includesText === "string" && pl.includesText.trim()
+                      ? pl.includesText.split(",").map((s: string) => s.trim()).filter(Boolean)
+                      : ["1 Fresh Sabzi", "Dal/Kadhi", "4 Phulkas", "Rice/Khichdi"];
+
+                    return {
+                      id: pl.id || `p_${cookId}_${typeLower}_${idx}`,
+                      type: typeLower,
+                      label: pl.name || pl.label || `${typeLower.toUpperCase()} Plan`,
+                      price: Number(pl.price) || 120,
+                      perMeal: Math.round(Number(pl.price) / Math.max(1, Number(pl.mealsIncluded) || (typeLower === "monthly" ? 30 : typeLower === "weekly" ? 7 : 1))),
+                      description: pl.description || "Daily fresh homemade hygienic tiffin.",
+                      includes: cleanIncludes,
+                      popular: Boolean(pl.popular || (pl.badge && pl.badge.toLowerCase().includes("popular"))),
+                    };
+                  });
+                }
+              }
+            } catch {}
+
             const synthesized = {
               id: cookId,
               kitchenName: p.shopName,
               name: p.headCook || "Home Cook",
               bio: p.bio || `Fresh homemade meals cooked with hygiene by Chef ${p.headCook || "Cook"}.`,
-              coverImage: "https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=800&q=80",
-              avatar: "https://randomuser.me/api/portraits/men/33.jpg",
+              coverImage: p.coverImage || "https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=800&q=80",
+              avatar: p.avatar || "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&q=80",
               fssaiNo: p.fssaiNumber || "10020042007891",
               cuisines: p.pureVeg ? ["gujarati", "kathiyawadi", "jain"] : ["gujarati", "punjabi"],
               city: p.city || "Rajkot",
@@ -98,7 +129,7 @@ export default function CookProfilePage() {
               totalOrders: 65,
               responseTime: "Under 25 min",
               memberSince: "2024",
-              plans: [
+              plans: customPlans.length > 0 ? customPlans : [
                 { id: `p_${cookId}_daily`, type: "daily", label: "Daily Kathiyawadi Plan", price: 120, perMeal: 120, description: "Daily fresh homemade tiffin.", includes: ["1 Sabzi", "Dal/Kadhi", "4 Phulkas", "Rice"] },
                 { id: `p_${cookId}_weekly`, type: "weekly", label: "Weekly Saver Plan", price: 749, perMeal: 107, description: "7-day variety plan with Sunday sweet special.", includes: ["Sabzi", "Dal/Kadhi", "Rotis", "Rice", "Sweet"], popular: true },
                 { id: `p_${cookId}_monthly`, type: "monthly", label: "Monthly Royal Plan", price: 2799, perMeal: 93, description: "30-day meal plan. Pause anytime.", includes: ["Full Thali", "Special Sundays", "5 Skips"] },
@@ -132,10 +163,10 @@ export default function CookProfilePage() {
   const cookReviews = cook ? REVIEWS.filter((r) => r.cookId === cook.id) : [];
   const [activeTab, setActiveTab] = useState<"menu" | "plans" | "reviews">("menu");
   const [selectedDay, setSelectedDay] = useState<string>("Monday");
-  const [selectedPlan, setSelectedPlan] = useState<string>(cook?.plans?.find((p: any) => p.popular)?.id || cook?.plans?.[0]?.id || "p1");
+  const [selectedPlan, setSelectedPlan] = useState<string>(cook?.plans?.find((p: any) => p.popular)?.id || cook?.plans?.[0]?.id || "");
 
   useEffect(() => {
-    if (cook && (!selectedPlan || selectedPlan === "p1")) {
+    if (cook && !selectedPlan) {
       const bestPlan = cook.plans?.find((p: any) => p.popular)?.id || cook.plans?.[0]?.id;
       if (bestPlan) setSelectedPlan(bestPlan);
     }

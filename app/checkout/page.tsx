@@ -24,56 +24,119 @@ function CheckoutContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const cookId = searchParams.get("cook") || "c1";
-  const planId = searchParams.get("plan") || "p2";
+  const cookId = searchParams.get("cook") || "";
+  const planId = searchParams.get("plan") || "";
 
-  const [cook, setCook] = useState<any>(() => COOKS.find((c) => c.id === cookId) || COOKS[0]);
-  const [plan, setPlan] = useState<any>(() => cook?.plans?.find((p: any) => p.id === planId) || cook?.plans?.[0]);
+  const [cook, setCook] = useState<any>(() => cookId ? (COOKS.find((c) => c.id === cookId) || null) : null);
+  const [plan, setPlan] = useState<any>(() => cook?.plans?.find((p: any) => p.id === planId) || cook?.plans?.[0] || null);
+  const [cookNotFound, setCookNotFound] = useState(false);
 
-  // Form State
+  // Form State — starts empty, will be prefilled from logged-in user
   const [formData, setFormData] = useState({
-    fullName: "Pooja Patel",
-    phone: "9876543210",
-    email: "pooja.patel@example.com",
-    address: "Flat 402, Radhika Residency, Kalavad Road",
-    area: "Kalavad Road",
+    fullName: "",
+    phone: "",
+    email: "",
+    address: "",
+    area: "",
     city: cook?.city || "Rajkot",
-    pincode: "360005",
-    landmark: "Near Reliance Mall",
+    pincode: "",
+    landmark: "",
     mealSlot: "Lunch (12:00 PM – 1:30 PM)",
     deliveryDays: "all-7-days",
-    startDate: "2026-10-16",
-    dietaryNotes: "Less spicy, less oil please.",
+    startDate: new Date(Date.now() + 86400000).toISOString().split("T")[0],
+    dietaryNotes: "",
     paymentMethod: "cod",
   });
 
-  // Load custom cook if registered, and prefill logged in user
+  // Load cook from all sources: mockData → hf_registered_cooks → hf_cook_profile → API
   useEffect(() => {
     if (typeof window !== "undefined") {
-      let resolvedCook = COOKS.find((c) => c.id === cookId);
+      if (!cookId) {
+        setCookNotFound(true);
+        return;
+      }
+
+      // 1. Try mock cooks list
+      let resolvedCook: any = COOKS.find((c) => c.id === cookId);
+
+      // 2. Try hf_registered_cooks in localStorage
       if (!resolvedCook) {
         try {
           const registered = JSON.parse(localStorage.getItem("hf_registered_cooks") || "[]");
-          resolvedCook = registered.find((c: any) => c.id === cookId || c.kitchenName?.toLowerCase() === cookId.toLowerCase());
+          resolvedCook = registered.find((c: any) => c.id === cookId);
         } catch {}
       }
+
+      // 3. Try hf_cook_profile (currently logged-in cook's own profile)
+      if (!resolvedCook) {
+        try {
+          const activeProfile = localStorage.getItem("hf_cook_profile");
+          if (activeProfile) {
+            const p = JSON.parse(activeProfile);
+            const derivedId = `c_${(p.headCook || "cook").toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+            if (derivedId === cookId || p.shopName?.toLowerCase() === cookId.toLowerCase()) {
+              resolvedCook = {
+                id: derivedId,
+                kitchenName: p.shopName,
+                name: p.headCook || "Home Cook",
+                email: p.email || "",
+                bio: p.bio || `Fresh homemade meals by ${p.headCook || "Chef"}.`,
+                coverImage: "https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=800&q=80",
+                avatar: "https://randomuser.me/api/portraits/men/33.jpg",
+                city: p.city || "Rajkot",
+                area: p.address || `${p.city || "Rajkot"}`,
+                isVeg: p.pureVeg !== undefined ? p.pureVeg : true,
+                deliverySlots: [p.lunchSlot || "Lunch (12–1:30 PM)", p.dinnerSlot || "Dinner (7:30–9 PM)"],
+                plans: [
+                  { id: `p_${derivedId}_daily`, type: "daily", label: "Daily Plan", price: 120, perMeal: 120, description: "Daily fresh homemade tiffin.", includes: ["1 Sabzi", "Dal/Kadhi", "4 Phulkas", "Rice"] },
+                  { id: `p_${derivedId}_weekly`, type: "weekly", label: "Weekly Saver Plan", price: 749, perMeal: 107, description: "7-day variety plan.", includes: ["Sabzi", "Dal/Kadhi", "Rotis", "Rice", "Sweet"], popular: true },
+                  { id: `p_${derivedId}_monthly`, type: "monthly", label: "Monthly Royal Plan", price: 2799, perMeal: 93, description: "30-day plan. Pause anytime.", includes: ["Full Thali", "Special Sundays", "5 Skips"] },
+                ],
+              };
+            }
+          }
+        } catch {}
+      }
+
       if (resolvedCook) {
         setCook(resolvedCook);
         const resolvedPlan = resolvedCook.plans?.find((p: any) => p.id === planId) || resolvedCook.plans?.[0];
         if (resolvedPlan) setPlan(resolvedPlan);
+      } else {
+        // 4. Try API as last resort
+        fetch("/api/v1/cooks")
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success && Array.isArray(data.data)) {
+              const found = data.data.find((c: any) => c.id === cookId);
+              if (found) {
+                setCook(found);
+                const foundPlan = found.plans?.find((p: any) => p.id === planId) || found.plans?.[0];
+                if (foundPlan) setPlan(foundPlan);
+              } else {
+                setCookNotFound(true);
+              }
+            } else {
+              setCookNotFound(true);
+            }
+          })
+          .catch(() => setCookNotFound(true));
       }
 
+      // Prefill form with logged-in customer data
       try {
         const u = localStorage.getItem("hf_user");
         if (u) {
           const userObj = JSON.parse(u);
-          if (userObj.name) {
+          if (userObj.name || userObj.email) {
+            const cleanPhone = (userObj.phone || "").replace(/\D/g, "").slice(0, 10);
             setFormData((prev) => ({
               ...prev,
-              fullName: userObj.name,
-              email: userObj.email || prev.email,
-              phone: userObj.phone || prev.phone,
+              fullName: userObj.name || "",
+              email: userObj.email || "",
+              phone: cleanPhone,
               city: userObj.city || prev.city,
+              address: userObj.address || "",
             }));
           }
         }
@@ -83,10 +146,7 @@ function CheckoutContent() {
 
   // Coupon state
   const [couponInput, setCouponInput] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>({
-    code: "FIRSTFEAST",
-    discount: Math.round(plan.price * 0.1),
-  });
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
   const [couponError, setCouponError] = useState("");
 
   // Submission state
@@ -94,7 +154,7 @@ function CheckoutContent() {
   const [orderConfirmed, setOrderConfirmed] = useState(false);
   const [confirmedOrderId, setConfirmedOrderId] = useState("");
 
-  const subtotal = plan.price;
+  const subtotal = plan?.price || 0;
   const discountAmount = appliedCoupon ? appliedCoupon.discount : 0;
   const deliveryFee = 0; // Free home delivery
   const platformFee = 0; // Transparent ₹0 Platform Fee (No hidden charges)
@@ -112,7 +172,7 @@ function CheckoutContent() {
       setAppliedCoupon({ code, discount: 50 });
       setCouponInput("");
     } else if (code === "FIRSTFEAST") {
-      setAppliedCoupon({ code, discount: Math.round(plan.price * 0.1) });
+      setAppliedCoupon({ code, discount: Math.round((plan?.price || 0) * 0.1) });
       setCouponInput("");
     } else if (code === "HOMELOVE") {
       setAppliedCoupon({ code, discount: 100 });
@@ -296,6 +356,35 @@ function CheckoutContent() {
     setOrderConfirmed(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  // Show error if cook or plan cannot be resolved
+  if (cookNotFound || (!cook && !cookId)) {
+    return (
+      <div style={{ minHeight: "80vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)", padding: "2rem" }}>
+        <div className="card" style={{ maxWidth: 480, textAlign: "center", padding: "3rem 2rem" }}>
+          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🍳</div>
+          <h2 style={{ fontFamily: "Poppins", fontWeight: 700, color: "var(--text)", marginBottom: "0.5rem" }}>Kitchen Not Found</h2>
+          <p style={{ color: "var(--text-muted)", marginBottom: "1.5rem" }}>
+            The kitchen you selected could not be loaded. Please go back and choose a cook to subscribe to.
+          </p>
+          <Link href="/search" className="btn btn-primary" style={{ display: "inline-flex" }}>
+            Browse Home Cooks
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!cook || !plan) {
+    return (
+      <div style={{ minHeight: "80vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)" }}>
+        <div style={{ textAlign: "center" }}>
+          <div className="spinner" style={{ margin: "0 auto 1rem" }} />
+          <p style={{ color: "var(--text-muted)" }}>Loading kitchen details...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (orderConfirmed) {
     return (

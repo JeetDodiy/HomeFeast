@@ -99,21 +99,38 @@ export async function POST(request: Request) {
     }
 
     const targetCook =
-      (orCookConditions.length > 0
+      orCookConditions.length > 0
         ? await prisma.cook.findFirst({
             where: { OR: orCookConditions },
             include: { plans: true },
           })
-        : null) || (await prisma.cook.findFirst({ include: { plans: true } }))!;
+        : null;
+
+    if (!targetCook) {
+      return NextResponse.json(
+        { version: "v1", success: false, error: "Cook not found. Please provide a valid cookId or cookName." },
+        { status: 400 }
+      );
+    }
 
     const targetUser =
-      (await prisma.user.findFirst({
+      await prisma.user.findFirst({
         where: {
-          OR: [{ id: body.userId }, { email: body.email || "demo@customer.com" }],
+          OR: [
+            ...(body.userId ? [{ id: body.userId }] : []),
+            ...(body.email ? [{ email: body.email }] : []),
+          ],
         },
-      })) || (await prisma.user.findFirst({ where: { role: "CUSTOMER" } }))!;
+      });
 
-    const targetPlan = targetCook.plans[0] || (await prisma.plan.findFirst())!;
+    if (!targetUser) {
+      return NextResponse.json(
+        { version: "v1", success: false, error: "Customer not found. Please log in and try again." },
+        { status: 400 }
+      );
+    }
+
+    const targetPlan = targetCook.plans.find((p: any) => p.id === body.planId) || targetCook.plans[0] || (await prisma.plan.findFirst({ where: { cookId: targetCook.id } }));
 
     const duration = Number(body.durationDays) || 7;
     const startDate = body.startDate ? new Date(body.startDate) : new Date();

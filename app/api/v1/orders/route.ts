@@ -137,20 +137,28 @@ export async function POST(request: Request) {
       : null;
 
     if (!targetCook) {
-      targetCook = (await prisma.cook.findFirst({ include: { plans: true } }))!;
+      // If cook not found in DB (they may not have registered on backend), allow order to proceed with localStorage-only storage
+      // Return success response that the client-side can handle
+      return NextResponse.json(
+        { version: "v1", success: false, error: "Cook not registered in database. Order saved locally only." },
+        { status: 400 }
+      );
     }
 
     // 2. Resolve User in PostgreSQL
     let targetUser = await prisma.user.findFirst({
       where: {
         OR: [
-          { id: body.userId },
-          { email: body.email || "demo@customer.com" },
+          ...(body.userId ? [{ id: body.userId }] : []),
+          ...(body.email ? [{ email: body.email }] : []),
         ],
       },
     });
     if (!targetUser) {
-      targetUser = (await prisma.user.findFirst({ where: { role: "CUSTOMER" } }))!;
+      return NextResponse.json(
+        { version: "v1", success: false, error: "Customer not found. Please log in to place an order." },
+        { status: 400 }
+      );
     }
 
     // 3. Resolve Plan in PostgreSQL
@@ -159,7 +167,7 @@ export async function POST(request: Request) {
       targetPlan = (await prisma.plan.findUnique({ where: { id: body.planId } })) || undefined;
     }
     if (!targetPlan) {
-      targetPlan = targetCook.plans[0] || (await prisma.plan.findFirst())!;
+      targetPlan = targetCook.plans[0] || (await prisma.plan.findFirst({ where: { cookId: targetCook.id } })) || undefined;
     }
 
     // 4. Create Order in PostgreSQL

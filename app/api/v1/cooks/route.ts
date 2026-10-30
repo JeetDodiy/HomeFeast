@@ -183,12 +183,19 @@ export async function POST(request: Request) {
     }
 
     // 3. Create or update cook in PostgreSQL
+    const cookCover = body.coverImage || body.avatar || "https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=800&q=80";
+    const cookPhotos = Array.isArray(body.photos) && body.photos.length > 0 
+      ? body.photos 
+      : (body.avatar ? [body.avatar] : [cookCover]);
+
     const newCook = await prisma.cook.upsert({
       where: { userId },
       update: {
         kitchenName: body.kitchenName || cookName,
         bio: body.bio || "Fresh homemade cooking",
         fssaiNo: body.fssaiNo,
+        coverImage: cookCover,
+        photos: cookPhotos,
         area: body.area || "City Center",
         pincode: body.pincode || "360001",
         serviceAreas: body.serviceAreas || ["City Center"],
@@ -202,6 +209,8 @@ export async function POST(request: Request) {
         bio: body.bio || "Fresh homemade cooking",
         fssaiNo: body.fssaiNo,
         cityId: cityRecord!.id,
+        coverImage: cookCover,
+        photos: cookPhotos,
         area: body.area || "City Center",
         pincode: body.pincode || "360001",
         serviceAreas: body.serviceAreas || ["City Center"],
@@ -213,6 +222,13 @@ export async function POST(request: Request) {
         totalOrders: 0,
       },
     });
+
+    if (body.avatar && userId) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { avatar: body.avatar },
+      }).catch(() => {});
+    }
 
     // 4. Create or update plans in PostgreSQL
     const plansToSave = Array.isArray(body.plans) && body.plans.length > 0 ? body.plans : [
@@ -248,32 +264,57 @@ export async function POST(request: Request) {
       },
     ];
 
+    const savedPlanIds: string[] = [];
+
     for (const p of plansToSave) {
-      const planType = (p.type || "DAILY").toUpperCase();
-      const validPlanType = ["DAILY", "WEEKLY", "MONTHLY", "TRIAL"].includes(planType) ? planType : "DAILY";
-      const planId = p.id || `p_${newCook.id}_${planType.toLowerCase()}`;
+      const rawType = (p.type || "DAILY").toUpperCase();
+      const validPlanType = ["DAILY", "WEEKLY", "MONTHLY"].includes(rawType) ? rawType : "DAILY";
+      const planId = p.id || `p_${newCook.id}_${validPlanType.toLowerCase()}_${Date.now()}`;
+      savedPlanIds.push(planId);
+
+      const planName = p.label || p.name || `${validPlanType} Plan`;
+      const planPrice = Number(p.price) || 120;
+      const mealsCount = Number(p.mealsIncluded) || (validPlanType === "MONTHLY" ? 30 : validPlanType === "WEEKLY" ? 7 : 1);
+      const perMeal = Number(p.perMeal) || Math.round(planPrice / Math.max(1, mealsCount));
+      const includesList = Array.isArray(p.includes) && p.includes.length > 0
+        ? p.includes
+        : typeof p.includesText === "string" && p.includesText.trim()
+        ? p.includesText.split(",").map((s: string) => s.trim()).filter(Boolean)
+        : ["1 Fresh Sabzi", "Dal/Kadhi", "4 Phulkas", "Rice/Khichdi"];
+
       await prisma.plan.upsert({
         where: { id: planId },
         update: {
-          name: p.label || p.name || `${planType} Plan`,
-          price: Number(p.price) || 120,
-          perMeal: Number(p.perMeal) || Number(p.price) || 120,
-          description: p.description || "",
-          includes: Array.isArray(p.includes) ? p.includes : [],
-          popular: Boolean(p.popular),
+          name: planName,
+          type: validPlanType as any,
+          price: planPrice,
+          perMeal,
+          description: p.description || `${planName} homestyle meal subscription.`,
+          includes: includesList,
+          popular: Boolean(p.popular || (p.badge && p.badge.toLowerCase().includes("popular"))),
         },
         create: {
           id: planId,
           cookId: newCook.id,
-          name: p.label || p.name || `${planType} Plan`,
+          name: planName,
           type: validPlanType as any,
-          price: Number(p.price) || 120,
-          perMeal: Number(p.perMeal) || Number(p.price) || 120,
-          description: p.description || "",
-          includes: Array.isArray(p.includes) ? p.includes : [],
-          popular: Boolean(p.popular),
+          price: planPrice,
+          perMeal,
+          description: p.description || `${planName} homestyle meal subscription.`,
+          includes: includesList,
+          popular: Boolean(p.popular || (p.badge && p.badge.toLowerCase().includes("popular"))),
         },
       });
+    }
+
+    // Delete plans for this cook that are no longer in the updated plans list
+    if (savedPlanIds.length > 0) {
+      await prisma.plan.deleteMany({
+        where: {
+          cookId: newCook.id,
+          id: { notIn: savedPlanIds },
+        },
+      }).catch(() => {});
     }
 
     return NextResponse.json(

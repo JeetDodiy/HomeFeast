@@ -6,7 +6,8 @@ import {
   Bell, Settings, LogOut, Plus, Edit2, Trash2, CheckCircle,
   XCircle, TrendingUp, Package, Users, ShieldCheck, ArrowRight,
   Check, Phone, MessageSquare, MapPin, Store, AlertCircle,
-  RefreshCw, ChefHat, Search, ExternalLink, Pause, Play, Sparkles
+  RefreshCw, ChefHat, Search, ExternalLink, Pause, Play, Sparkles,
+  Camera, Upload, Image as ImageIcon
 } from "lucide-react";
 import EarningsChart from "@/components/EarningsChart";
 
@@ -28,6 +29,8 @@ interface CookProfile {
   phone: string;
   email: string;
   bio: string;
+  avatar?: string;
+  coverImage?: string;
   fssaiNumber: string;
   fssaiVerified: boolean;
   city: string;
@@ -52,6 +55,8 @@ const EMPTY_PROFILE: CookProfile = {
   phone: "",
   email: "",
   bio: "",
+  avatar: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&q=80",
+  coverImage: "https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=800&q=80",
   fssaiNumber: "",
   fssaiVerified: false,
   city: "Rajkot",
@@ -76,6 +81,8 @@ const DEFAULT_PROFILE: CookProfile = {
   phone: "+91 98250 12345",
   email: "demo@cook.com",
   bio: "Authentic Gujarati & Kathiyawadi homemade meals made with fresh ingredients, pure spices, and traditional recipes delivered daily.",
+  avatar: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&q=80",
+  coverImage: "https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=800&q=80",
   fssaiNumber: "10020042003854",
   fssaiVerified: true,
   city: "Rajkot",
@@ -146,38 +153,50 @@ const DEFAULT_WEEKLY_PLAN = [
 const DEFAULT_PLANS = [
   {
     id: "p1",
-    name: "Daily Trial Plan",
-    badge: "Trial",
+    name: "Daily Homestyle Plan",
+    type: "daily",
+    badge: "Flexible Daily",
     price: 120,
     billingCycle: "per meal",
     mealsIncluded: 1,
-    description: "1 Dal, 2 Veg Sabzi, 4 Phulka Rotis with Ghee, Rice, Salad & Roasted Papad.",
+    description: "Fresh homemade tiffin every day with Sabzi, Dal, Roti & Rice.",
+    includes: ["1 Fresh Sabzi", "Dal/Kadhi", "4 Phulkas", "Rice/Khichdi"],
+    specialItem: "Sev Tameta Nu Shaak",
     pauseAllowedDays: 0,
     deliverySlots: ["Lunch (12–1:30 PM)", "Dinner (7:30–9 PM)"],
+    popular: false,
     active: true,
   },
   {
     id: "p2",
-    name: "Weekly Saver Plan (7 Days)",
-    badge: "Popular",
+    name: "Weekly Saver Plan",
+    type: "weekly",
+    badge: "Most Popular Choice",
     price: 749,
     billingCycle: "7 days",
     mealsIncluded: 7,
-    description: "Billed weekly. Save 11%. Includes rotating weekday specials + Sunday sweet & Kathiyawadi dinner.",
+    description: "7-day rotating wholesome plan with Sunday dessert special.",
+    includes: ["Daily variety thali", "Dal/Kadhi", "Fresh Rotis", "Rice", "Sunday Dessert"],
+    specialItem: "Ringan No Olo with Bajra Rotlo",
     pauseAllowedDays: 1,
     deliverySlots: ["Lunch (12–1:30 PM)", "Dinner (7:30–9 PM)"],
+    popular: true,
     active: true,
   },
   {
     id: "p3",
-    name: "Monthly Home Plan (30 Days)",
+    name: "Monthly Royal Plan",
+    type: "monthly",
     badge: "Best Value",
     price: 2799,
     billingCycle: "30 days",
     mealsIncluded: 30,
-    description: "Best rate (₹93/meal). Includes up to 5 paused delivery days rollover + free weekend desserts.",
+    description: "30-day complete meal plan with 5 flexible pause days.",
+    includes: ["Full Royal Thali", "5 Flexible Pause Days", "Sunday Desserts"],
+    specialItem: "Royal Undhiyu & Shrikhand",
     pauseAllowedDays: 5,
     deliverySlots: ["Lunch (12–1:30 PM)", "Dinner (7:30–9 PM)", "Both Lunch & Dinner"],
+    popular: false,
     active: true,
   },
 ];
@@ -238,12 +257,17 @@ export default function CookDashboardPage() {
   const [showAddPlanModal, setShowAddPlanModal] = useState(false);
   const [newPlan, setNewPlan] = useState({
     name: "",
-    badge: "Custom",
-    price: 999,
-    billingCycle: "14 days",
-    mealsIncluded: 14,
-    description: "",
-    pauseAllowedDays: 2,
+    type: "weekly",
+    badge: "Most Popular Choice",
+    price: 749,
+    billingCycle: "7 days",
+    mealsIncluded: 7,
+    description: "7-day wholesome rotating meal plan with Sunday special.",
+    includesText: "Daily variety thali, Dal/Kadhi, Fresh Rotis, Rice, Sunday Dessert",
+    includes: ["Daily variety thali", "Dal/Kadhi", "Fresh Rotis", "Rice", "Sunday Dessert"],
+    specialItem: "Sev Tameta Nu Shaak",
+    popular: false,
+    pauseAllowedDays: 1,
     deliverySlots: ["Lunch (12–1:30 PM)", "Dinner (7:30–9 PM)"],
     active: true,
   });
@@ -567,6 +591,116 @@ export default function CookDashboardPage() {
     }
   }, []);
 
+  // Photo Presets for quick selection
+  const PRESET_AVATARS = [
+    { label: "👩‍🍳 Gujarati Rasoi", url: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&q=80" },
+    { label: "🍲 Maa Ki Rasoi", url: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&q=80" },
+    { label: "👨‍🍳 Master Chef", url: "https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=200&q=80" },
+    { label: "🥘 Kathiyawadi Special", url: "https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?w=200&q=80" },
+  ];
+
+  const PRESET_COVERS = [
+    { label: "🍛 Royal Gujarati Thali", url: "https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=800&q=80" },
+    { label: "🏡 Warm Desi Kitchen", url: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800&q=80" },
+    { label: "🫓 Fresh Tawa Rotis", url: "https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?w=800&q=80" },
+    { label: "🍱 Fresh Tiffin Spread", url: "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=800&q=80" },
+  ];
+
+  const handleAvatarFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("Please choose an image under 2MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setProfile(prev => ({ ...prev, avatar: reader.result as string }));
+        showToast("Kitchen avatar photo updated!");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCoverFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) {
+      showToast("Please choose a cover banner image under 3MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setProfile(prev => ({ ...prev, coverImage: reader.result as string }));
+        showToast("Kitchen cover banner updated!");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const syncPlansToBackend = (updatedPlans: any[]) => {
+    if (typeof window === "undefined") return;
+    try {
+      const cookId = `c_${(profile.headCook || "cook").toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+      const existingRegistered = JSON.parse(localStorage.getItem("hf_registered_cooks") || "[]");
+      const matchedIdx = existingRegistered.findIndex((c: any) => c.id === cookId || c.kitchenName?.toLowerCase() === profile.shopName?.toLowerCase());
+
+      const formattedPlans = updatedPlans.map((p, idx) => {
+        const typeLower = (p.type || (p.billingCycle?.toLowerCase().includes("month") ? "monthly" : p.billingCycle?.toLowerCase().includes("week") ? "weekly" : "daily")).toLowerCase();
+        const cleanIncludes = Array.isArray(p.includes) && p.includes.length > 0
+          ? p.includes
+          : typeof p.includesText === "string" && p.includesText.trim()
+          ? p.includesText.split(",").map((s: string) => s.trim()).filter(Boolean)
+          : ["1 Fresh Sabzi", "Dal/Kadhi", "4 Phulkas", "Rice/Khichdi"];
+
+        return {
+          id: p.id || `p_${cookId}_${typeLower}_${idx}`,
+          type: typeLower,
+          label: p.name || p.label || `${typeLower.toUpperCase()} Plan`,
+          name: p.name || p.label || `${typeLower.toUpperCase()} Plan`,
+          price: Number(p.price) || 120,
+          perMeal: Math.round((Number(p.price) || 120) / Math.max(1, Number(p.mealsIncluded) || (typeLower === "monthly" ? 30 : typeLower === "weekly" ? 7 : 1))),
+          description: p.description || `${p.name} homestyle meal plan`,
+          includes: cleanIncludes,
+          popular: Boolean(p.popular || (p.badge && p.badge.toLowerCase().includes("popular"))),
+          badge: p.badge || (p.popular ? "Most Popular Choice" : ""),
+          mealsIncluded: Number(p.mealsIncluded) || (typeLower === "monthly" ? 30 : typeLower === "weekly" ? 7 : 1),
+          billingCycle: p.billingCycle || (typeLower === "monthly" ? "30 days" : typeLower === "weekly" ? "7 days" : "per meal"),
+          pauseAllowedDays: Number(p.pauseAllowedDays) || (typeLower === "monthly" ? 5 : typeLower === "weekly" ? 1 : 0),
+          specialItem: p.specialItem || "Sev Tameta Nu Shaak",
+        };
+      });
+
+      if (matchedIdx >= 0) {
+        existingRegistered[matchedIdx].plans = formattedPlans;
+        localStorage.setItem("hf_registered_cooks", JSON.stringify(existingRegistered));
+      }
+
+      // Sync to live PostgreSQL API
+      fetch("/api/v1/cooks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: currentUser?.id,
+          name: profile.headCook,
+          kitchenName: profile.shopName,
+          phone: profile.phone,
+          city: profile.city,
+          area: profile.address || profile.city,
+          avatar: profile.avatar,
+          coverImage: profile.coverImage,
+          bio: profile.bio,
+          fssaiNo: profile.fssaiNumber,
+          isVeg: profile.pureVeg,
+          status: profile.status || "approved",
+          plans: formattedPlans,
+        }),
+      }).catch(() => {});
+    } catch {}
+  };
+
   // Save Handlers to persist state
   const saveProfile = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -580,6 +714,7 @@ export default function CookDashboardPage() {
           const userObj = JSON.parse(u);
           userObj.kitchenName = profile.shopName;
           userObj.name = profile.headCook;
+          if (profile.avatar) userObj.avatar = profile.avatar;
           localStorage.setItem("hf_user", JSON.stringify(userObj));
         }
       } catch {}
@@ -588,11 +723,36 @@ export default function CookDashboardPage() {
       try {
         const existingRegistered = JSON.parse(localStorage.getItem("hf_registered_cooks") || "[]");
         const cookId = `c_${profile.headCook.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+        const updatedPlans = plans.map((p, idx) => {
+          const typeLower = (p.type || (p.billingCycle?.toLowerCase().includes("month") ? "monthly" : p.billingCycle?.toLowerCase().includes("week") ? "weekly" : "daily")).toLowerCase();
+          const cleanIncludes = Array.isArray(p.includes) && p.includes.length > 0
+            ? p.includes
+            : typeof p.includesText === "string" && p.includesText.trim()
+            ? p.includesText.split(",").map((s: string) => s.trim()).filter(Boolean)
+            : ["1 Fresh Sabzi", "Dal/Kadhi", "4 Phulkas", "Rice/Khichdi"];
+
+          return {
+            id: p.id || `p_${cookId}_${typeLower}_${idx}`,
+            type: typeLower,
+            label: p.name,
+            name: p.name,
+            price: Number(p.price) || 120,
+            perMeal: Math.round(Number(p.price) / Math.max(1, Number(p.mealsIncluded) || (typeLower === "monthly" ? 30 : typeLower === "weekly" ? 7 : 1))),
+            description: p.description || `${p.name} homestyle meal plan`,
+            includes: cleanIncludes,
+            popular: Boolean(p.popular || (p.badge && p.badge.toLowerCase().includes("popular"))),
+            badge: p.badge || (p.popular ? "Most Popular Choice" : ""),
+            specialItem: p.specialItem || "Chef Special",
+          };
+        });
+
         const updatedRecord = {
           id: cookId,
           kitchenName: profile.shopName,
           name: profile.headCook,
           bio: profile.bio,
+          avatar: profile.avatar || "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&q=80",
+          coverImage: profile.coverImage || "https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=800&q=80",
           city: profile.city || "Rajkot",
           area: profile.address || `${profile.city || "Rajkot"}`,
           pincode: "360005",
@@ -604,16 +764,7 @@ export default function CookDashboardPage() {
           serviceAreas: profile.serviceAreas || ["Kalavad Road", "University Road"],
           status: "approved",
           isVeg: profile.pureVeg !== undefined ? profile.pureVeg : true,
-          plans: plans.map((p, idx) => ({
-            id: p.id || `p_${idx}`,
-            type: p.billingCycle?.toLowerCase().includes("month") ? "monthly" : p.billingCycle?.toLowerCase().includes("week") ? "weekly" : "daily",
-            label: p.name,
-            price: p.price,
-            perMeal: Math.round(p.price / (p.mealsIncluded || 1)),
-            description: p.description,
-            includes: ["Full Thali Meal", "Dal/Kadhi", "Sabzi", "Rotis", "Rice"],
-            popular: idx === 1,
-          })),
+          plans: updatedPlans,
         };
         const filteredList = existingRegistered.filter((c: any) => c.kitchenName !== profile.shopName && c.id !== cookId);
         localStorage.setItem("hf_registered_cooks", JSON.stringify([updatedRecord, ...filteredList]));
@@ -621,11 +772,26 @@ export default function CookDashboardPage() {
         fetch("/api/v1/cooks", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updatedRecord),
+          body: JSON.stringify({
+            userId: currentUser?.id,
+            email: currentUser?.email || profile.email,
+            phone: profile.phone,
+            name: profile.headCook,
+            kitchenName: profile.shopName,
+            bio: profile.bio,
+            avatar: profile.avatar,
+            coverImage: profile.coverImage,
+            fssaiNo: profile.fssaiNumber,
+            city: profile.city,
+            area: profile.address,
+            isVeg: profile.pureVeg,
+            status: profile.status || "approved",
+            plans: updatedPlans,
+          }),
         }).catch(() => {});
       } catch {}
     }
-    showToast("Shop profile & kitchen settings saved successfully!");
+    showToast("Shop profile, kitchen photos & settings saved successfully!");
   };
 
   const toggleKitchenStatus = () => {
@@ -732,12 +898,33 @@ export default function CookDashboardPage() {
   const handleSavePlan = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingPlan) return;
-    const updated = plans.map(p => p.id === editingPlan.id ? editingPlan : p);
+    const cleanIncludes = Array.isArray(editingPlan.includes) && editingPlan.includes.length > 0
+      ? editingPlan.includes
+      : typeof editingPlan.includesText === "string" && editingPlan.includesText.trim()
+      ? editingPlan.includesText.split(",").map((s: string) => s.trim()).filter(Boolean)
+      : ["1 Fresh Sabzi", "Dal/Kadhi", "4 Phulkas", "Rice"];
+
+    const typeLower = (editingPlan.type || (editingPlan.billingCycle?.toLowerCase().includes("month") ? "monthly" : editingPlan.billingCycle?.toLowerCase().includes("week") ? "weekly" : "daily")).toLowerCase();
+    const planToSave = {
+      ...editingPlan,
+      name: editingPlan.name.trim(),
+      type: typeLower,
+      price: Number(editingPlan.price) || 120,
+      mealsIncluded: Number(editingPlan.mealsIncluded) || (typeLower === "monthly" ? 30 : typeLower === "weekly" ? 7 : 1),
+      pauseAllowedDays: Number(editingPlan.pauseAllowedDays) || 0,
+      includes: cleanIncludes,
+      popular: Boolean(editingPlan.popular),
+      badge: editingPlan.badge || (editingPlan.popular ? "Most Popular Choice" : ""),
+      specialItem: editingPlan.specialItem || "Sev Tameta Nu Shaak",
+    };
+
+    const updated = plans.map(p => p.id === editingPlan.id ? planToSave : p);
     setPlans(updated);
     if (typeof window !== "undefined") {
       if (userScopedKey) localStorage.setItem(`hf_cook_plans_${userScopedKey}`, JSON.stringify(updated));
       localStorage.setItem("hf_cook_plans", JSON.stringify(updated));
     }
+    syncPlansToBackend(updated);
     setShowEditPlanModal(false);
     showToast(`Saved settings for ${editingPlan.name}!`);
   };
@@ -745,14 +932,26 @@ export default function CookDashboardPage() {
   const handleAddPlan = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPlan.name.trim()) return;
+    const cleanIncludes = Array.isArray(newPlan.includes) && newPlan.includes.length > 0
+      ? newPlan.includes
+      : typeof newPlan.includesText === "string" && newPlan.includesText.trim()
+      ? newPlan.includesText.split(",").map((s: string) => s.trim()).filter(Boolean)
+      : ["1 Fresh Sabzi", "Dal/Kadhi", "4 Phulkas", "Rice"];
+
+    const typeLower = (newPlan.type || "weekly").toLowerCase();
     const plan = {
       ...newPlan,
       id: `p_${Date.now()}`,
       name: newPlan.name.trim(),
+      type: typeLower,
       price: Number(newPlan.price) || 120,
-      mealsIncluded: Number(newPlan.mealsIncluded) || 1,
+      mealsIncluded: Number(newPlan.mealsIncluded) || (typeLower === "monthly" ? 30 : typeLower === "weekly" ? 7 : 1),
       pauseAllowedDays: Number(newPlan.pauseAllowedDays) || 0,
       description: newPlan.description.trim() || `${newPlan.name.trim()} homemade tiffin plan.`,
+      includes: cleanIncludes,
+      popular: Boolean(newPlan.popular),
+      badge: newPlan.badge || (newPlan.popular ? "Most Popular Choice" : ""),
+      specialItem: newPlan.specialItem || "Chef Special",
       deliverySlots: newPlan.deliverySlots.length > 0 ? newPlan.deliverySlots : ["Lunch (12–1:30 PM)"],
       active: true,
     };
@@ -762,19 +961,25 @@ export default function CookDashboardPage() {
       if (userScopedKey) localStorage.setItem(`hf_cook_plans_${userScopedKey}`, JSON.stringify(updated));
       localStorage.setItem("hf_cook_plans", JSON.stringify(updated));
     }
+    syncPlansToBackend(updated);
     setShowAddPlanModal(false);
     setNewPlan({
       name: "",
-      badge: "Custom",
-      price: 999,
-      billingCycle: "14 days",
-      mealsIncluded: 14,
-      description: "",
-      pauseAllowedDays: 2,
+      type: "weekly",
+      badge: "Most Popular Choice",
+      price: 749,
+      billingCycle: "7 days",
+      mealsIncluded: 7,
+      description: "7-day wholesome rotating meal plan with Sunday special.",
+      includesText: "Daily variety thali, Dal/Kadhi, Fresh Rotis, Rice, Sunday Dessert",
+      includes: ["Daily variety thali", "Dal/Kadhi", "Fresh Rotis", "Rice", "Sunday Dessert"],
+      specialItem: "Sev Tameta Nu Shaak",
+      popular: false,
+      pauseAllowedDays: 1,
       deliverySlots: ["Lunch (12–1:30 PM)", "Dinner (7:30–9 PM)"],
       active: true,
     });
-    showToast(`Added custom plan "${plan.name}"!`);
+    showToast(`Added plan "${plan.name}"!`);
   };
 
   const handleDeletePlan = (id: string, name: string) => {
@@ -785,6 +990,7 @@ export default function CookDashboardPage() {
       if (userScopedKey) localStorage.setItem(`hf_cook_plans_${userScopedKey}`, JSON.stringify(updated));
       localStorage.setItem("hf_cook_plans", JSON.stringify(updated));
     }
+    syncPlansToBackend(updated);
     showToast(`Removed plan "${name}".`);
   };
 
@@ -1491,6 +1697,144 @@ export default function CookDashboardPage() {
             </div>
 
             <form onSubmit={saveProfile}>
+              {/* Visual Branding Card: Avatar Logo & Kitchen Cover Banner */}
+              <div className="card" style={{ padding: "1.75rem", marginBottom: "1.5rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                  <Camera size={20} style={{ color: "var(--primary)" }} />
+                  <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.125rem", color: "var(--text)", margin: 0 }}>
+                    Kitchen Visuals & Storefront Branding (Logo & Cover Banner)
+                  </h3>
+                </div>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", margin: "0 0 1.5rem" }}>
+                  Upload or select your Kitchen Logo Avatar and Hero Cover Banner. These photos are displayed on your public kitchen profile, menu page, and meal plan cards.
+                </p>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: "1.75rem" }}>
+                  {/* Kitchen Avatar / Logo */}
+                  <div style={{ background: "var(--surface-alt)", padding: "1.25rem", borderRadius: "12px", border: "1px solid var(--border)" }}>
+                    <label className="label" style={{ fontWeight: 700, marginBottom: "0.75rem", display: "block" }}>
+                      Kitchen Logo / Chef Avatar
+                    </label>
+                    <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
+                      <div style={{ position: "relative", width: 72, height: 72, borderRadius: "50%", overflow: "hidden", border: "3px solid var(--primary)", flexShrink: 0, background: "var(--surface)" }}>
+                        <img
+                          src={profile.avatar || "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&q=80"}
+                          alt={profile.shopName || "Kitchen Avatar"}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label className="btn btn-outline" style={{ fontSize: "0.78rem", padding: "0.4rem 0.8rem", cursor: "pointer", display: "inline-flex", gap: "0.4rem", alignItems: "center", marginBottom: "0.4rem" }}>
+                          <Upload size={13} /> Upload Avatar
+                          <input type="file" accept="image/*" onChange={handleAvatarFileUpload} style={{ display: "none" }} />
+                        </label>
+                        <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", margin: 0 }}>PNG, JPG or WebP up to 2MB</p>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: "0.75rem" }}>
+                      <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.25rem" }}>Or Paste Image URL</label>
+                      <input
+                        type="url"
+                        className="input"
+                        style={{ fontSize: "0.8rem", padding: "0.4rem 0.6rem" }}
+                        placeholder="https://..."
+                        value={profile.avatar || ""}
+                        onChange={(e) => setProfile({ ...profile, avatar: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: "0.35rem" }}>Quick Preset Avatars:</span>
+                      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                        {PRESET_AVATARS.map((p, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => {
+                              setProfile(prev => ({ ...prev, avatar: p.url }));
+                              showToast(`Selected ${p.label}!`);
+                            }}
+                            style={{
+                              padding: "0.25rem 0.6rem",
+                              borderRadius: "14px",
+                              border: profile.avatar === p.url ? "1.5px solid var(--primary)" : "1px solid var(--border)",
+                              background: profile.avatar === p.url ? "rgba(235, 94, 40, 0.12)" : "var(--surface)",
+                              color: profile.avatar === p.url ? "var(--primary)" : "var(--text)",
+                              fontSize: "0.72rem",
+                              cursor: "pointer",
+                            }}
+                          >
+                            {p.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Kitchen Cover / Banner */}
+                  <div style={{ background: "var(--surface-alt)", padding: "1.25rem", borderRadius: "12px", border: "1px solid var(--border)" }}>
+                    <label className="label" style={{ fontWeight: 700, marginBottom: "0.75rem", display: "block" }}>
+                      Kitchen Banner / Cover Photo
+                    </label>
+                    <div style={{ position: "relative", width: "100%", height: 85, borderRadius: "10px", overflow: "hidden", border: "1px solid var(--border)", marginBottom: "0.75rem" }}>
+                      <img
+                        src={profile.coverImage || "https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=800&q=80"}
+                        alt="Cover Banner"
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.65), transparent)", display: "flex", alignItems: "flex-end", padding: "0.5rem 0.75rem" }}>
+                        <span style={{ color: "#fff", fontWeight: 700, fontSize: "0.85rem", textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}>
+                          {profile.shopName || "Kitchen Storefront"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", marginBottom: "0.75rem" }}>
+                      <label className="btn btn-outline" style={{ fontSize: "0.78rem", padding: "0.4rem 0.8rem", cursor: "pointer", display: "inline-flex", gap: "0.4rem", alignItems: "center", whiteSpace: "nowrap" }}>
+                        <Upload size={13} /> Upload Banner
+                        <input type="file" accept="image/*" onChange={handleCoverFileUpload} style={{ display: "none" }} />
+                      </label>
+                      <input
+                        type="url"
+                        className="input"
+                        style={{ fontSize: "0.8rem", padding: "0.4rem 0.6rem", flex: 1 }}
+                        placeholder="Cover image URL (https://...)"
+                        value={profile.coverImage || ""}
+                        onChange={(e) => setProfile({ ...profile, coverImage: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: "0.35rem" }}>Quick Preset Banners:</span>
+                      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                        {PRESET_COVERS.map((c, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => {
+                              setProfile(prev => ({ ...prev, coverImage: c.url }));
+                              showToast(`Selected ${c.label}!`);
+                            }}
+                            style={{
+                              padding: "0.25rem 0.6rem",
+                              borderRadius: "14px",
+                              border: profile.coverImage === c.url ? "1.5px solid var(--primary)" : "1px solid var(--border)",
+                              background: profile.coverImage === c.url ? "rgba(235, 94, 40, 0.12)" : "var(--surface)",
+                              color: profile.coverImage === c.url ? "var(--primary)" : "var(--text)",
+                              fontSize: "0.72rem",
+                              cursor: "pointer",
+                            }}
+                          >
+                            {c.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: "1.5rem" }}>
                 {/* Left Card: Core Store Info */}
                 <div className="card" style={{ padding: "1.75rem" }}>
@@ -2349,18 +2693,36 @@ export default function CookDashboardPage() {
         {/* ------------------------------------------------------------- */}
         {activeTab === "plans" && (
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.75rem", flexWrap: "wrap", gap: "1rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", flexWrap: "wrap", gap: "1rem" }}>
               <div>
                 <h2 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.5rem", color: "var(--text)", margin: 0 }}>
                   Plans & Subscription Pricing 💰
                 </h2>
                 <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", margin: "0.25rem 0 0" }}>
-                  Configure your daily trial, weekly, and monthly meal subscriptions offered to neighborhood customers.
+                  Configure your daily trial, weekly saver, and monthly royal subscription packages offered to neighborhood customers.
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => setShowAddPlanModal(true)}
+                onClick={() => {
+                  setNewPlan({
+                    name: "",
+                    type: "weekly",
+                    badge: "Most Popular Choice",
+                    price: 749,
+                    billingCycle: "7 days",
+                    mealsIncluded: 7,
+                    description: "7-day wholesome rotating meal plan with Sunday special.",
+                    includesText: "Daily variety thali, Dal/Kadhi, Fresh Rotis, Rice, Sunday Dessert",
+                    includes: ["Daily variety thali", "Dal/Kadhi", "Fresh Rotis", "Rice", "Sunday Dessert"],
+                    specialItem: "Sev Tameta Nu Shaak",
+                    popular: false,
+                    pauseAllowedDays: 1,
+                    deliverySlots: ["Lunch (12–1:30 PM)", "Dinner (7:30–9 PM)"],
+                    active: true,
+                  });
+                  setShowAddPlanModal(true);
+                }}
                 className="btn btn-primary"
                 style={{ fontSize: "0.875rem" }}
               >
@@ -2368,8 +2730,16 @@ export default function CookDashboardPage() {
               </button>
             </div>
 
+            {/* Quick helper tip */}
+            <div style={{ background: "rgba(235, 94, 40, 0.08)", border: "1px dashed rgba(235, 94, 40, 0.3)", borderRadius: "10px", padding: "0.875rem 1.25rem", marginBottom: "1.75rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+              <Sparkles size={18} style={{ color: "var(--primary)", flexShrink: 0 }} />
+              <p style={{ fontSize: "0.85rem", color: "var(--text)", margin: 0, lineHeight: 1.5 }}>
+                <strong>Live Sync:</strong> Any subscription plans you add or edit here automatically show up on your public Kitchen Profile (<strong>/cooks/[id]</strong>) and in the Homepage meal plan carousel (<strong>/#plans</strong>).
+              </p>
+            </div>
+
             {/* Plans Grid */}
-            <div style={{ display: "grid", gridTemplateColumns: plans.length === 0 ? "1fr" : "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem", marginBottom: "2rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: plans.length === 0 ? "1fr" : "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem", marginBottom: "2rem" }}>
               {plans.length === 0 ? (
                 <div className="card" style={{ padding: "3.5rem 1.5rem", textAlign: "center", border: "1px dashed var(--border)" }}>
                   <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(232, 101, 10, 0.12)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.25rem" }}>
@@ -2392,64 +2762,138 @@ export default function CookDashboardPage() {
                 </div>
               ) : (
                 plans.map((p) => {
-                  const perMeal = Math.round(p.price / Math.max(1, p.mealsIncluded));
+                  const perMeal = Math.round(p.price / Math.max(1, p.mealsIncluded || 1));
                   const cookTakeHome = Math.round(p.price * 0.90);
+                  const isPopularChoice = p.popular || (p.badge && p.badge.toLowerCase().includes("popular"));
+                  const includesList = Array.isArray(p.includes) && p.includes.length > 0
+                    ? p.includes
+                    : typeof p.includesText === "string" && p.includesText.trim()
+                    ? p.includesText.split(",").map((s: string) => s.trim()).filter(Boolean)
+                    : ["1 Fresh Sabzi", "Dal/Kadhi", "4 Phulkas", "Rice/Khichdi"];
+
                   return (
                     <div
                       key={p.id}
                       className="card"
                       style={{
-                        padding: "2rem",
-                        border: p.badge === "Popular" ? "2px solid var(--primary)" : "1px solid var(--border)",
+                        padding: "1.75rem",
+                        border: isPopularChoice ? "2px solid var(--primary)" : "1px solid var(--border)",
                         display: "flex",
                         flexDirection: "column",
                         position: "relative",
+                        boxShadow: isPopularChoice ? "0 8px 24px rgba(235, 94, 40, 0.15)" : undefined,
                       }}
                     >
-                      {p.badge && (
-                        <span
-                          className="badge badge-primary"
-                          style={{ position: "absolute", top: "1rem", right: "1rem" }}
+                      {isPopularChoice && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "-12px",
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            background: "var(--primary)",
+                            color: "#fff",
+                            fontSize: "0.7rem",
+                            fontWeight: 800,
+                            letterSpacing: "0.06em",
+                            padding: "2px 12px",
+                            borderRadius: "12px",
+                            textTransform: "uppercase",
+                            boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+                          }}
                         >
-                          {p.badge}
-                        </span>
+                          ★ {p.badge || "Most Popular Choice"}
+                        </div>
                       )}
+
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginTop: isPopularChoice ? "0.5rem" : 0, marginBottom: "0.5rem" }}>
+                        <span
+                          style={{
+                            fontSize: "0.72rem",
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                            padding: "0.2rem 0.55rem",
+                            borderRadius: "6px",
+                            background: p.type === "monthly" ? "rgba(139, 92, 246, 0.15)" : p.type === "weekly" ? "rgba(235, 94, 40, 0.15)" : "rgba(59, 130, 246, 0.15)",
+                            color: p.type === "monthly" ? "#a78bfa" : p.type === "weekly" ? "var(--primary)" : "#60a5fa",
+                          }}
+                        >
+                          {(p.type || "weekly").toUpperCase()} PLAN
+                        </span>
+                        {p.badge && !isPopularChoice && (
+                          <span className="badge badge-primary" style={{ fontSize: "0.72rem" }}>
+                            {p.badge}
+                          </span>
+                        )}
+                      </div>
 
                       <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)", margin: "0 0 0.5rem" }}>
                         {p.name}
                       </h3>
 
-                      <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                        <span style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "2.25rem", color: "var(--primary)" }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", marginBottom: "0.25rem" }}>
+                        <span style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "2rem", color: "var(--primary)" }}>
                           ₹{p.price}
                         </span>
-                        <span style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>
-                          / {p.billingCycle}
+                        <span style={{ fontSize: "0.875rem", color: "var(--text-muted)", fontWeight: 600 }}>
+                          / {p.billingCycle || (p.type === "monthly" ? "30 days" : p.type === "weekly" ? "7 days" : "day")}
+                        </span>
+                        <span style={{ marginLeft: "auto", fontSize: "0.8rem", color: "var(--secondary)", fontWeight: 700, background: "rgba(34, 197, 94, 0.1)", padding: "0.15rem 0.5rem", borderRadius: "6px" }}>
+                          ₹{perMeal}/meal
                         </span>
                       </div>
 
-                      <p style={{ fontSize: "0.85rem", color: "var(--secondary)", fontWeight: 700, margin: "0 0 1rem" }}>
-                        ₹{perMeal} per meal ({p.mealsIncluded} meals included)
-                      </p>
-
-                      <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", lineHeight: 1.6, flex: 1, margin: "0 0 1.25rem" }}>
+                      <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.5, margin: "0 0 1rem" }}>
                         {p.description}
                       </p>
 
-                      <div style={{ background: "var(--surface-alt)", padding: "0.75rem", borderRadius: "8px", marginBottom: "1.25rem", fontSize: "0.78rem" }}>
-                        <p style={{ margin: "0 0 0.25rem", color: "var(--text-muted)" }}>
+                      {/* What's Included Preview Checklist */}
+                      <div style={{ background: "var(--surface-alt)", padding: "0.875rem", borderRadius: "10px", marginBottom: "1rem" }}>
+                        <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.4rem" }}>
+                          What&apos;s Included:
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+                          {includesList.map((inc: string, i: number) => (
+                            <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8125rem", color: "var(--text)" }}>
+                              <CheckCircle size={13} style={{ color: "#22c55e", flexShrink: 0 }} fill="#22c55e" />
+                              <span>{inc}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {p.specialItem && (
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.78rem", color: "var(--primary)", background: "rgba(235, 94, 40, 0.08)", padding: "0.4rem 0.65rem", borderRadius: "6px", marginBottom: "1rem", border: "1px dashed rgba(235, 94, 40, 0.25)" }}>
+                          <ChefHat size={14} style={{ flexShrink: 0 }} />
+                          <span>Chef Signature: <strong>{p.specialItem}</strong></span>
+                        </div>
+                      )}
+
+                      <div style={{ background: "var(--surface-alt)", padding: "0.65rem 0.85rem", borderRadius: "8px", marginBottom: "1.25rem", fontSize: "0.78rem" }}>
+                        <p style={{ margin: "0 0 0.2rem", color: "var(--text-muted)" }}>
                           Your Take-Home (90%): <strong style={{ color: "var(--secondary)" }}>₹{cookTakeHome}</strong>
                         </p>
                         <p style={{ margin: 0, color: "var(--text-muted)" }}>
-                          Max Pause Days: <strong>{p.pauseAllowedDays} days</strong>
+                          Max Pause Days: <strong>{p.pauseAllowedDays || 0} days</strong>
                         </p>
                       </div>
 
-                      <div style={{ display: "flex", gap: "0.5rem" }}>
+                      <div style={{ display: "flex", gap: "0.5rem", marginTop: "auto" }}>
                         <button
                           type="button"
                           onClick={() => {
-                            setEditingPlan({ ...p });
+                            const incArr = Array.isArray(p.includes) && p.includes.length > 0
+                              ? p.includes
+                              : (p.includesText ? p.includesText.split(",").map((s: string) => s.trim()) : ["1 Fresh Sabzi", "Dal/Kadhi", "4 Phulkas", "Rice"]);
+                            setEditingPlan({
+                              ...p,
+                              type: p.type || "weekly",
+                              includes: incArr,
+                              includesText: incArr.join(", "),
+                              specialItem: p.specialItem || "Sev Tameta Nu Shaak",
+                              popular: Boolean(p.popular || (p.badge && p.badge.toLowerCase().includes("popular"))),
+                            });
                             setShowEditPlanModal(true);
                           }}
                           className="btn btn-outline"
@@ -2481,7 +2925,7 @@ export default function CookDashboardPage() {
                 style={{
                   position: "fixed",
                   inset: 0,
-                  background: "rgba(0,0,0,0.6)",
+                  background: "rgba(0,0,0,0.65)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -2489,27 +2933,54 @@ export default function CookDashboardPage() {
                   padding: "1rem",
                 }}
               >
-                <div className="card" style={{ width: "100%", maxWidth: 480, padding: "2rem" }}>
+                <div className="card" style={{ width: "100%", maxWidth: 540, maxHeight: "90vh", overflowY: "auto", padding: "2rem" }}>
                   <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)", marginBottom: "1.25rem" }}>
                     Create New Subscription Plan
                   </h3>
 
                   <form onSubmit={handleAddPlan}>
-                    <div style={{ marginBottom: "1rem" }}>
-                      <label className="label">Plan Name *</label>
-                      <input
-                        type="text"
-                        required
-                        className="input"
-                        placeholder="e.g. 15-Day Executive Lunch Plan"
-                        value={newPlan.name}
-                        onChange={(e) => setNewPlan({ ...newPlan, name: e.target.value })}
-                      />
+                    <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: "1rem", marginBottom: "1rem" }}>
+                      <div>
+                        <label className="label">Plan Name *</label>
+                        <input
+                          type="text"
+                          required
+                          className="input"
+                          placeholder="e.g. Weekly Kathiyawadi Saver"
+                          value={newPlan.name}
+                          onChange={(e) => setNewPlan({ ...newPlan, name: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Plan Type *</label>
+                        <select
+                          className="input"
+                          style={{ background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)" }}
+                          value={newPlan.type}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const meals = val === "monthly" ? 30 : val === "weekly" ? 7 : 1;
+                            const cycle = val === "monthly" ? "30 days" : val === "weekly" ? "7 days" : "per meal";
+                            const pauses = val === "monthly" ? 5 : val === "weekly" ? 1 : 0;
+                            setNewPlan({
+                              ...newPlan,
+                              type: val,
+                              mealsIncluded: meals,
+                              billingCycle: cycle,
+                              pauseAllowedDays: pauses,
+                            });
+                          }}
+                        >
+                          <option value="daily">Daily Plan</option>
+                          <option value="weekly">Weekly Plan (7 Days)</option>
+                          <option value="monthly">Monthly Plan (30 Days)</option>
+                        </select>
+                      </div>
                     </div>
 
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
                       <div>
-                        <label className="label">Plan Price (₹) *</label>
+                        <label className="label">Total Price (₹) *</label>
                         <input
                           type="number"
                           required
@@ -2532,9 +3003,15 @@ export default function CookDashboardPage() {
                       </div>
                     </div>
 
+                    {/* Calculated Per-Meal Preview */}
+                    <div style={{ background: "var(--surface-alt)", padding: "0.6rem 0.85rem", borderRadius: "8px", marginBottom: "1rem", fontSize: "0.8rem", display: "flex", justifyContent: "space-between" }}>
+                      <span>Calculated Rate: <strong>₹{Math.round(newPlan.price / Math.max(1, newPlan.mealsIncluded))}/meal</strong></span>
+                      <span>Take-Home (90%): <strong style={{ color: "var(--secondary)" }}>₹{Math.round(newPlan.price * 0.90)}</strong></span>
+                    </div>
+
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
                       <div>
-                        <label className="label">Billing Cycle (e.g. 14 days)</label>
+                        <label className="label">Billing Cycle (e.g. 7 days, /month)</label>
                         <input
                           type="text"
                           required
@@ -2544,7 +3021,7 @@ export default function CookDashboardPage() {
                         />
                       </div>
                       <div>
-                        <label className="label">Max Pause Allowance (Days)</label>
+                        <label className="label">Max Pause Days Allowed</label>
                         <input
                           type="number"
                           min="0"
@@ -2556,15 +3033,71 @@ export default function CookDashboardPage() {
                       </div>
                     </div>
 
+                    {/* What's Included Input */}
                     <div style={{ marginBottom: "1rem" }}>
-                      <label className="label">Plan Badge (Optional)</label>
-                      <input
-                        type="text"
+                      <label className="label">What&apos;s Included (Comma-separated items) *</label>
+                      <textarea
+                        rows={2}
+                        required
                         className="input"
-                        placeholder="e.g. Recommended, Saver, Student Special"
-                        value={newPlan.badge}
-                        onChange={(e) => setNewPlan({ ...newPlan, badge: e.target.value })}
+                        style={{ background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)", fontFamily: "inherit" }}
+                        placeholder="e.g. 1 Fresh Sabzi, Dal/Kadhi, 4 Phulkas, Rice/Khichdi, Sunday Dessert"
+                        value={newPlan.includesText}
+                        onChange={(e) => setNewPlan({ ...newPlan, includesText: e.target.value })}
                       />
+                      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginTop: "0.4rem" }}>
+                        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Presets:</span>
+                        {[
+                          { label: "Homestyle Thali", text: "1 Fresh Sabzi, Dal/Kadhi, 4 Phulkas, Steamed Rice" },
+                          { label: "Kathiyawadi Thali", text: "Ringan No Olo, 2x Bajra Rotlo, Desi Kadhi, Khichdi, Garlic Chutney" },
+                          { label: "Royal Feast", text: "2 Special Sabzis, Dal Fry, 4 Ghee Phulkas, Jeera Rice, Sweet & Papad" }
+                        ].map((pr, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setNewPlan({ ...newPlan, includesText: pr.text })}
+                            style={{ fontSize: "0.7rem", padding: "0.15rem 0.5rem", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--surface-alt)", color: "var(--text)", cursor: "pointer" }}
+                          >
+                            + {pr.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                      <div>
+                        <label className="label">Chef Signature Dish (Optional)</label>
+                        <input
+                          type="text"
+                          className="input"
+                          placeholder="e.g. Sev Tameta Nu Shaak"
+                          value={newPlan.specialItem || ""}
+                          onChange={(e) => setNewPlan({ ...newPlan, specialItem: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Plan Badge Text (Optional)</label>
+                        <input
+                          type="text"
+                          className="input"
+                          placeholder="e.g. Recommended, Best Value"
+                          value={newPlan.badge}
+                          onChange={(e) => setNewPlan({ ...newPlan, badge: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Popular choice checkbox */}
+                    <div style={{ marginBottom: "1rem", background: "var(--surface-alt)", padding: "0.75rem", borderRadius: "8px" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: "0.6rem", cursor: "pointer", fontSize: "0.85rem", fontWeight: 600, color: "var(--text)" }}>
+                        <input
+                          type="checkbox"
+                          checked={newPlan.popular}
+                          onChange={(e) => setNewPlan({ ...newPlan, popular: e.target.checked, badge: e.target.checked ? "Most Popular Choice" : newPlan.badge })}
+                          style={{ width: 16, height: 16, accentColor: "var(--primary)" }}
+                        />
+                        Highlight as Most Popular Choice (Adds orange border & highlight banner on store)
+                      </label>
                     </div>
 
                     <div style={{ marginBottom: "1.5rem" }}>
@@ -2573,7 +3106,7 @@ export default function CookDashboardPage() {
                         rows={2}
                         className="input"
                         style={{ background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)", fontFamily: "inherit" }}
-                        placeholder="Describe what items are included in each tiffin box."
+                        placeholder="Brief summary for subscribers (e.g. 7-day rotating wholesome plan with Sunday dessert special)."
                         value={newPlan.description}
                         onChange={(e) => setNewPlan({ ...newPlan, description: e.target.value })}
                       />
@@ -2598,7 +3131,7 @@ export default function CookDashboardPage() {
                 style={{
                   position: "fixed",
                   inset: 0,
-                  background: "rgba(0,0,0,0.5)",
+                  background: "rgba(0,0,0,0.65)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -2606,26 +3139,47 @@ export default function CookDashboardPage() {
                   padding: "1rem",
                 }}
               >
-                <div className="card" style={{ width: "100%", maxWidth: 480, padding: "2rem" }}>
+                <div className="card" style={{ width: "100%", maxWidth: 540, maxHeight: "90vh", overflowY: "auto", padding: "2rem" }}>
                   <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)", marginBottom: "1.25rem" }}>
                     Configure Plan: {editingPlan.name}
                   </h3>
 
                   <form onSubmit={handleSavePlan}>
-                    <div style={{ marginBottom: "1rem" }}>
-                      <label className="label">Plan Name</label>
-                      <input
-                        type="text"
-                        required
-                        className="input"
-                        value={editingPlan.name}
-                        onChange={(e) => setEditingPlan({ ...editingPlan, name: e.target.value })}
-                      />
+                    <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: "1rem", marginBottom: "1rem" }}>
+                      <div>
+                        <label className="label">Plan Name *</label>
+                        <input
+                          type="text"
+                          required
+                          className="input"
+                          value={editingPlan.name}
+                          onChange={(e) => setEditingPlan({ ...editingPlan, name: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Plan Type *</label>
+                        <select
+                          className="input"
+                          style={{ background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)" }}
+                          value={editingPlan.type || "weekly"}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditingPlan({
+                              ...editingPlan,
+                              type: val,
+                            });
+                          }}
+                        >
+                          <option value="daily">Daily Plan</option>
+                          <option value="weekly">Weekly Plan (7 Days)</option>
+                          <option value="monthly">Monthly Plan (30 Days)</option>
+                        </select>
+                      </div>
                     </div>
 
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
                       <div>
-                        <label className="label">Total Price (₹)</label>
+                        <label className="label">Total Price (₹) *</label>
                         <input
                           type="number"
                           required
@@ -2636,7 +3190,7 @@ export default function CookDashboardPage() {
                         />
                       </div>
                       <div>
-                        <label className="label">Meals Included</label>
+                        <label className="label">Meals Included *</label>
                         <input
                           type="number"
                           required
@@ -2648,22 +3202,107 @@ export default function CookDashboardPage() {
                       </div>
                     </div>
 
+                    {/* Calculated Per-Meal Preview */}
+                    <div style={{ background: "var(--surface-alt)", padding: "0.6rem 0.85rem", borderRadius: "8px", marginBottom: "1rem", fontSize: "0.8rem", display: "flex", justifyContent: "space-between" }}>
+                      <span>Calculated Rate: <strong>₹{Math.round(editingPlan.price / Math.max(1, editingPlan.mealsIncluded))}/meal</strong></span>
+                      <span>Take-Home (90%): <strong style={{ color: "var(--secondary)" }}>₹{Math.round(editingPlan.price * 0.90)}</strong></span>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                      <div>
+                        <label className="label">Billing Cycle (e.g. 7 days, /month)</label>
+                        <input
+                          type="text"
+                          required
+                          className="input"
+                          value={editingPlan.billingCycle}
+                          onChange={(e) => setEditingPlan({ ...editingPlan, billingCycle: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Max Pause Allowance (Days)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="15"
+                          className="input"
+                          value={editingPlan.pauseAllowedDays}
+                          onChange={(e) => setEditingPlan({ ...editingPlan, pauseAllowedDays: Number(e.target.value) })}
+                        />
+                      </div>
+                    </div>
+
+                    {/* What's Included Input */}
                     <div style={{ marginBottom: "1rem" }}>
-                      <label className="label">Max Pause Allowance (Days)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="15"
+                      <label className="label">What&apos;s Included (Comma-separated items) *</label>
+                      <textarea
+                        rows={2}
+                        required
                         className="input"
-                        value={editingPlan.pauseAllowedDays}
-                        onChange={(e) => setEditingPlan({ ...editingPlan, pauseAllowedDays: Number(e.target.value) })}
+                        style={{ background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)", fontFamily: "inherit" }}
+                        placeholder="e.g. 1 Fresh Sabzi, Dal/Kadhi, 4 Phulkas, Rice/Khichdi, Sunday Dessert"
+                        value={editingPlan.includesText ?? (Array.isArray(editingPlan.includes) ? editingPlan.includes.join(", ") : "")}
+                        onChange={(e) => setEditingPlan({ ...editingPlan, includesText: e.target.value })}
                       />
+                      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginTop: "0.4rem" }}>
+                        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Presets:</span>
+                        {[
+                          { label: "Homestyle Thali", text: "1 Fresh Sabzi, Dal/Kadhi, 4 Phulkas, Steamed Rice" },
+                          { label: "Kathiyawadi Thali", text: "Ringan No Olo, 2x Bajra Rotlo, Desi Kadhi, Khichdi, Garlic Chutney" },
+                          { label: "Royal Feast", text: "2 Special Sabzis, Dal Fry, 4 Ghee Phulkas, Jeera Rice, Sweet & Papad" }
+                        ].map((pr, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setEditingPlan({ ...editingPlan, includesText: pr.text })}
+                            style={{ fontSize: "0.7rem", padding: "0.15rem 0.5rem", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--surface-alt)", color: "var(--text)", cursor: "pointer" }}
+                          >
+                            + {pr.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                      <div>
+                        <label className="label">Chef Signature Dish</label>
+                        <input
+                          type="text"
+                          className="input"
+                          placeholder="e.g. Sev Tameta Nu Shaak"
+                          value={editingPlan.specialItem || ""}
+                          onChange={(e) => setEditingPlan({ ...editingPlan, specialItem: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Badge Text</label>
+                        <input
+                          type="text"
+                          className="input"
+                          placeholder="e.g. Most Popular Choice"
+                          value={editingPlan.badge || ""}
+                          onChange={(e) => setEditingPlan({ ...editingPlan, badge: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Popular choice checkbox */}
+                    <div style={{ marginBottom: "1rem", background: "var(--surface-alt)", padding: "0.75rem", borderRadius: "8px" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: "0.6rem", cursor: "pointer", fontSize: "0.85rem", fontWeight: 600, color: "var(--text)" }}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(editingPlan.popular)}
+                          onChange={(e) => setEditingPlan({ ...editingPlan, popular: e.target.checked, badge: e.target.checked ? "Most Popular Choice" : editingPlan.badge })}
+                          style={{ width: 16, height: 16, accentColor: "var(--primary)" }}
+                        />
+                        Highlight as Most Popular Choice (Adds orange border & highlight banner on store)
+                      </label>
                     </div>
 
                     <div style={{ marginBottom: "1.5rem" }}>
                       <label className="label">Customer Description / Perks</label>
                       <textarea
-                        rows={3}
+                        rows={2}
                         className="input"
                         style={{ background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)", fontFamily: "inherit" }}
                         value={editingPlan.description}
@@ -2676,7 +3315,7 @@ export default function CookDashboardPage() {
                         Cancel
                       </button>
                       <button type="submit" className="btn btn-primary">
-                        Save Plan Rates
+                        Save Plan Rates & Details
                       </button>
                     </div>
                   </form>

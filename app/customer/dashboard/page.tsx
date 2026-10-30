@@ -8,42 +8,6 @@ import {
   Plus, CheckCircle, Send, MessageSquare, Trash2, Shield
 } from "lucide-react";
 
-const INITIAL_SUBSCRIPTIONS = [
-  {
-    id: "s1",
-    cookName: "Meera's Kitchen",
-    cookAvatar: "https://randomuser.me/api/portraits/women/44.jpg",
-    plan: "Weekly Plan – Gujarati Thali",
-    status: "ACTIVE",
-    startDate: "2024-10-07",
-    endDate: "2024-10-14",
-    slot: "Lunch (12–1 PM)",
-    price: 749,
-    nextDelivery: "Today, 12:30 PM",
-    remainingMeals: 4,
-  },
-  {
-    id: "s2",
-    cookName: "Jain Bhavan Tiffin",
-    cookAvatar: "https://randomuser.me/api/portraits/women/55.jpg",
-    plan: "Monthly Plan – Pure Jain Thali",
-    status: "PAUSED",
-    startDate: "2024-09-15",
-    endDate: "2024-10-15",
-    slot: "Lunch (11:30 AM–1 PM)",
-    price: 3599,
-    nextDelivery: "Paused by User",
-    remainingMeals: 14,
-  },
-];
-
-const MOCK_ORDERS = [
-  { id: "HF-ORD-101", cookName: "Meera's Kitchen", date: "2024-10-13", status: "DELIVERED", amount: 120, items: ["Dal Fry", "Aloo Gobi", "Roti", "Rice"], slot: "Lunch" },
-  { id: "HF-ORD-102", cookName: "Meera's Kitchen", date: "2024-10-12", status: "DELIVERED", amount: 120, items: ["Chana Dal", "Bhindi Masala", "Rice", "Roti"], slot: "Lunch" },
-  { id: "HF-ORD-103", cookName: "Priya's Home Kitchen", date: "2024-10-09", status: "CANCELLED", amount: 130, items: ["Idli (4 pcs)", "Sambar", "Coconut Chutney"], slot: "Breakfast" },
-  { id: "HF-ORD-104", cookName: "Meera's Kitchen", date: "2024-10-08", status: "DELIVERED", amount: 120, items: ["Moong Dal", "Mix Veg", "Roti", "Pulao"], slot: "Lunch" },
-];
-
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: "badge-active",
   PAUSED: "badge-pending",
@@ -86,11 +50,11 @@ export default function CustomerDashboardPage() {
 
   // Complaints and reviews state
   const [complaints, setComplaints] = useState<any[]>([]);
-  const [newComplaint, setNewComplaint] = useState({ cook: "Meera's Kitchen", issue: "" });
+  const [newComplaint, setNewComplaint] = useState({ cook: "", issue: "" });
   const [complaintSubmitted, setComplaintSubmitted] = useState(false);
 
   const [userReviews, setUserReviews] = useState<any[]>([]);
-  const [newReview, setNewReview] = useState({ cook: "Meera's Kitchen", rating: 5, comment: "" });
+  const [newReview, setNewReview] = useState({ cook: "", rating: 5, comment: "" });
   const [deleteSuccess, setDeleteSuccess] = useState("");
 
   const custCleanKey = (currentUser?.email || "").toLowerCase().replace(/[^a-z0-9]/g, "_");
@@ -135,17 +99,13 @@ export default function CustomerDashboardPage() {
 
       const userCleanKey = (activeUser?.email || "").toLowerCase().replace(/[^a-z0-9]/g, "_");
 
-      // Load customer subscriptions scoped strictly to this user
+      // Load customer subscriptions scoped strictly to this user — never show fake data
       try {
         const scopedSubs = userCleanKey ? localStorage.getItem(`hf_customer_subscriptions_${userCleanKey}`) : null;
-        const storedSubs = scopedSubs || (isDemoAccount ? localStorage.getItem("hf_customer_subscriptions") : null);
-        if (storedSubs) {
-          const parsed = JSON.parse(storedSubs);
-          if (Array.isArray(parsed)) {
-            setSubscriptions(parsed);
-          }
-        } else if (isDemoAccount) {
-          setSubscriptions(INITIAL_SUBSCRIPTIONS);
+        if (scopedSubs) {
+          const parsed = JSON.parse(scopedSubs);
+          if (Array.isArray(parsed)) setSubscriptions(parsed);
+          else setSubscriptions([]);
         } else {
           setSubscriptions([]);
         }
@@ -153,17 +113,13 @@ export default function CustomerDashboardPage() {
         setSubscriptions([]);
       }
 
-      // Load customer orders scoped strictly to this user
+      // Load customer orders scoped strictly to this user — never show fake data
       try {
         const scopedOrders = userCleanKey ? localStorage.getItem(`hf_customer_orders_${userCleanKey}`) : null;
-        const storedOrders = scopedOrders || (isDemoAccount ? localStorage.getItem("hf_customer_orders") : null);
-        if (storedOrders) {
-          const parsed = JSON.parse(storedOrders);
-          if (Array.isArray(parsed)) {
-            setOrders(parsed);
-          }
-        } else if (isDemoAccount) {
-          setOrders(MOCK_ORDERS);
+        if (scopedOrders) {
+          const parsed = JSON.parse(scopedOrders);
+          if (Array.isArray(parsed)) setOrders(parsed);
+          else setOrders([]);
         } else {
           setOrders([]);
         }
@@ -171,8 +127,8 @@ export default function CustomerDashboardPage() {
         setOrders([]);
       }
 
-      // Live Backend Query: only sync real orders & subscriptions if the user has a real registered ID or is demo
-      const targetUserId = activeUser?.id || (isDemoAccount ? "usr_customer_1" : "");
+      // Live Backend Query: only sync real orders & subscriptions if the user has a real registered ID
+      const targetUserId = activeUser?.id || "";
       if (targetUserId) {
         fetch(`/api/v1/orders?userId=${encodeURIComponent(targetUserId)}`)
           .then((res) => res.json())
@@ -190,9 +146,8 @@ export default function CustomerDashboardPage() {
               setOrders((prev) => {
                 const prevIds = new Set(prev.map((p) => p.id));
                 const merged = [...prev, ...formatted.filter((f: any) => !prevIds.has(f.id))];
-                if (typeof window !== "undefined") {
-                  if (userCleanKey) localStorage.setItem(`hf_customer_orders_${userCleanKey}`, JSON.stringify(merged));
-                  if (isDemoAccount) localStorage.setItem("hf_customer_orders", JSON.stringify(merged));
+                if (typeof window !== "undefined" && userCleanKey) {
+                  localStorage.setItem(`hf_customer_orders_${userCleanKey}`, JSON.stringify(merged));
                 }
                 return merged;
               });
@@ -221,9 +176,8 @@ export default function CustomerDashboardPage() {
               setSubscriptions((prev) => {
                 const prevIds = new Set(prev.map((p) => p.id));
                 const merged = [...prev, ...formattedSubs.filter((f: any) => !prevIds.has(f.id))];
-                if (typeof window !== "undefined") {
-                  if (userCleanKey) localStorage.setItem(`hf_customer_subscriptions_${userCleanKey}`, JSON.stringify(merged));
-                  if (isDemoAccount) localStorage.setItem("hf_customer_subscriptions", JSON.stringify(merged));
+                if (typeof window !== "undefined" && userCleanKey) {
+                  localStorage.setItem(`hf_customer_subscriptions_${userCleanKey}`, JSON.stringify(merged));
                 }
                 return merged;
               });
@@ -235,14 +189,10 @@ export default function CustomerDashboardPage() {
       // Load complaints scoped strictly to user
       try {
         const scopedComp = userCleanKey ? localStorage.getItem(`hf_customer_complaints_${userCleanKey}`) : null;
-        const storedComplaints = scopedComp || (isDemoAccount ? localStorage.getItem("hf_customer_complaints") : null);
-        if (storedComplaints) {
-          const parsed = JSON.parse(storedComplaints);
+        if (scopedComp) {
+          const parsed = JSON.parse(scopedComp);
           if (Array.isArray(parsed)) setComplaints(parsed);
-        } else if (isDemoAccount) {
-          setComplaints([
-            { id: "TKT-304", cook: "Priya's Home Kitchen", issue: "Breakfast was 30 mins late on Oct 9", status: "RESOLVED", date: "2024-10-09", reply: "Cook apologized and credited 1 free meal." },
-          ]);
+          else setComplaints([]);
         } else {
           setComplaints([]);
         }
@@ -253,14 +203,10 @@ export default function CustomerDashboardPage() {
       // Load user reviews scoped strictly to user
       try {
         const scopedRev = userCleanKey ? localStorage.getItem(`hf_customer_reviews_${userCleanKey}`) : null;
-        const storedReviews = scopedRev || (isDemoAccount ? localStorage.getItem("hf_customer_reviews") : null);
-        if (storedReviews) {
-          const parsed = JSON.parse(storedReviews);
+        if (scopedRev) {
+          const parsed = JSON.parse(scopedRev);
           if (Array.isArray(parsed)) setUserReviews(parsed);
-        } else if (isDemoAccount) {
-          setUserReviews([
-            { cook: "Meera's Kitchen", rating: 5, date: "2024-10-10", comment: "The Sunday special thali was incredible! Best home food in Rajkot." },
-          ]);
+          else setUserReviews([]);
         } else {
           setUserReviews([]);
         }
