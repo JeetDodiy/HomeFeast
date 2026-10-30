@@ -2491,15 +2491,27 @@ export default function HomePage() {
                 </Link>
                 <Link
                   href="/about"
-                  className="btn btn-ghost"
+                  id="cook-learn-more-btn"
                   style={{
-                    background: "rgba(255,255,255,0.06)",
-                    borderColor: "rgba(255,255,255,0.2)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.5rem",
+                    background: "rgba(255, 255, 255, 0.12)",
+                    border: "1.5px solid rgba(255, 255, 255, 0.45)",
                     color: "#FFFFFF",
                     padding: "0.875rem 2rem",
+                    borderRadius: "9999px",
+                    fontWeight: 600,
+                    fontSize: "1rem",
+                    textDecoration: "none",
+                    backdropFilter: "blur(8px)",
+                    boxShadow: "0 4px 14px rgba(0, 0, 0, 0.15)",
+                    transition: "all 0.2s ease",
                   }}
+                  className="cook-learn-more-link"
                 >
-                  <Play size={16} /> Learn More
+                  <Play size={16} fill="white" /> Learn More
                 </Link>
               </div>
             </div>

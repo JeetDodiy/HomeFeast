@@ -18,6 +18,7 @@ const TEAM = [
   { name: "Jeet Dodiya", role: "Founder & CEO", city: "Rajkot", avatar: "/team/jeet-dodiya.jpg" },
   { name: "Mansi Jajal", role: "Co-Founder & COO", city: "Rajkot", avatar: "/team/mansi-jajal.png" },
   { name: "Dixit Gohel", role: "CTO", city: "Rajkot", avatar: "/team/dixit-gohel.png" },
+  { name: "Harsil", role: "Operations & Project Manager", city: "Rajkot", avatar: "/team/team-manager.jpg" },
 ];
 
 export default function AboutPage() {
@@ -111,7 +112,7 @@ export default function AboutPage() {
             <div className="section-tag" style={{ display: "inline-flex" }}>👥 Our Team</div>
             <h2 style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "2.25rem", color: "var(--text)" }}>The People Behind HomeFeast</h2>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "2rem", maxWidth: 900, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.75rem", maxWidth: 1100, margin: "0 auto" }}>
             {TEAM.map((member) => (
               <div key={member.name} className="card" style={{ padding: "2.25rem 1.5rem", textAlign: "center", borderRadius: "16px" }}>
                 <div style={{ width: 104, height: 104, margin: "0 auto 1.25rem", borderRadius: "50%", padding: 3, background: "linear-gradient(135deg, var(--primary), var(--accent))", boxShadow: "0 8px 20px rgba(249, 115, 22, 0.25)" }}>
