@@ -1,0 +1,123 @@
+### Full Project Credentials & Legal Metadata
+
+* **Company Name**: HomeFeast Technologies Pvt. Ltd.
+* **Corporate Identification Number (CIN)**: `U72900GJ2026PTC148920`
+* **FSSAI License Number**: `10020042003854`
+* **Registered Address**: 302, Silicon Hub, Race Course Road, Rajkot, Gujarat - 360001
+* **Support Contact**: `support@homefeast.in` | `+91 98765 43210`
+* **Grievance Officer**: Mr. Rajesh Vora (`grievance@homefeast.in`)
+* **GitHub Repository**: `JeetDodiy/HomeFeast` (Main Author: Jeet Dodiya)
+* **Live Production URL**: `https://home-feast-blue.vercel.app/`
+* **Current Version & Branch**: `v2.0.1` (`main` branch)
+* **Language Composition**: TypeScript (96.5%), CSS (2.9%), Other (0.6%)
+* **Regulatory Compliance**: DPDP Act 2023 Compliant & WCAG 2.1 AA Contrast Compliant
+
+🗂️ Complete Repository Structure & File Directory
+JeetDodiy/HomeFeast (main)
+├── .github/workflows/ # CI/CD automation scripts
+├── app/ # Next.js App Router (pages & API routes)
+├── components/ # Reusable UI components
+├── docs/ # Core technical documentation
+│   ├── PRD.md # Product Requirements Document
+│   ├── ERD.md # Entity-Relationship Diagram
+│   ├── ARCHITECTURE.md # Security & Infrastructure Architecture
+│   └── API_COLLECTION.json # Postman REST API Collection
+├── lib/ # Utility functions, database client & helpers
+├── prisma/ # PostgreSQL schema & database migration scripts
+├── public/ # Static assets & logos
+├── scripts/ # Database seeding & utility scripts
+├── tests/ # Jest & integration test files
+├── .dockerignore # Docker build exclusions
+├── .gitignore # Git ignore rules
+├── AGENTS.md # Autonomous agent instructions
+├── ALGORITHM_AUDIT.md # Matching & dispatch algorithm audit
+├── Dockerfile # Multi-stage Docker container specification
+├── FIELD_VALIDATION_REPORT.md # Input & form validation audit report
+├── FIX_PLAN.md # Maintenance & feature fix roadmap
+├── README.md # Primary repository documentation
+├── SECURITY_AUDIT.md # Security & vulnerability audit report
+├── TEST_CASES.md # Test execution suite & results
+├── WEBSITE_AUDIT_REPORT.md # UI/UX & performance audit report
+├── docker-compose.yml # Full-stack orchestrator (Next.js, Postgres, Redis)
+├── eslint.config.mjs # ESLint code quality configuration
+├── jest.config.js # Jest testing framework setup
+├── middleware.ts # Authentication & route protection middleware
+├── next.config.ts # Next.js compiler & deployment settings
+├── package.json # Node.js dependencies & npm scripts
+├── reqyrment.text # System requirements
+├── tsconfig.json # TypeScript strict compilation configuration
+└── vercel.json # Vercel deployment configuration
+
+### 🌐 Complete Application Sitemap & Route Matrix
+| Route Path            | Description & Functional Purpose                                                                                                                                       | Access Tier       |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| `/`                   | Hero section, cook search, process overview, bestseller showcase, testimonials, FAQ                                                                                   | Public            |
+| `/search`             | Cook directory with filters (City: Rajkot, Ahmedabad, Surat, Vadodara, Gandhinagar; Cuisine: Gujarati, Punjabi, South Indian, Jain; Diet: Pure Veg, Non-Veg)           | Customers         |
+| `/cooks/[id]`         | Individual cook profile, 7-day rotating menu schedule, meal slots (Breakfast 7–8 AM, Lunch 12–1:30 PM, Dinner 7:30–9 PM), ratings & plan selection                   | Customers         |
+| `/checkout`           | Order checkout, delivery address input, promo code redemption (`FIRSTFEAST`), payment gateway                                                                         | Customers         |
+| `/cook/register`      | Partner onboarding portal with FSSAI hygiene verification wizard                                                                                                     | Home Cooks        |
+| `/customer/dashboard` | Active subscriptions manager, pause/resume controls (up to 5 days with rollover), delivery tracking, review submission, dispute filing                               | Customers         |
+| `/cook/dashboard`     | Weekly menu manager, incoming subscription orders, live dispatch console, weekly earnings ledger                                                                      | Home Cooks        |
+| `/admin/dashboard`    | Kitchen FSSAI approval desk, user role manager, dispute escalation desk, city growth analytics                                                                        | System Admin      |
+| `/about`              | Mission statement, hygiene standards, brand story                                                                                                                      | Public            |
+| `/contact`            | Customer support routing, cook assistance desk (`support@homefeast.in`)                                                                                               | Public            |
+| `/privacy`            | DPDP Act 2023 compliant privacy policy                                                                                                                                 | Public            |
+| `/terms`              | Customer & Cook terms of service, cancellation policy                                                                                                                  | Public            |
+
+---
+### 💳 Commercial Meal Subscriptions & Revenue Model
+
+1. **Daily Kathiyawadi Plan**: ₹120/day (₹120/meal) — Flexible single-day trial with 1 Desi Sabzi, Dal/Kadhi, 4 Phulkas or 2 Bajra Rotla, Rice/Khichdi, and Chef Signature item (*Sev Tameta Nu Shaak*).
+2. **Weekly Saver Plan**: ₹749/week (₹107/meal — Save 11%) — 7-day rotating homemade plan with Sunday special thali and sweet dessert.
+3. **Monthly Royal Plan**: ₹2,799/month (₹93/meal — Save 17%) — 30-day complete meal plan, 5 flexible pause days with rollover, priority delivery.
+4. **Partner Cook Earnings**: Verified home cooks earn ₹15,000 to ₹35,000/month with platform onboarding and FSSAI guidance.
+
+🛠️ Execution & Development Commands
+# 1. Local Setup
+git clone https://github.com/JeetDodiy/HomeFeast.git
+cd HomeFeast
+npm install
+cp .env.example .env
+npm run dev # Runs local server at http://localhost:3000
+
+# 2. Docker Setup (One-Command Launch)
+docker compose up -d --build # Spins up Next.js app, PostgreSQL DB, and Redis
+
+# 3. Quality & Build Audit Verification
+npm run build # Type-check and production bundle compile
+npm run lint # ESLint verification (0 Errors, 0 Warnings)
+
+📝 Complete Master Prompt (Copy & Paste Ready)
+Below is the structured prompt containing all project credentials and repository parameters:
+Generate an exhaustive, publication-grade technical project specification document for "HomeFeast — Homemade Tiffin & Food Service Platform" using the following verified credentials and repository data:
+1. PROJECT IDENTIFICATION & LEGAL CREDENTIALS:
+- Company Name: HomeFeast Technologies Pvt. Ltd.
+- Production Deployment: https://home-feast-blue.vercel.app/
+- GitHub Repository: JeetDodiy/HomeFeast (Branch: main, Version: v2.0.1)
+- FSSAI License Number: 10020042003854
+- CIN: U72900GJ2026PTC148920
+- Registered Office: 302, Silicon Hub, Race Course Road, Rajkot, Gujarat - 360001
+- Support Email: support@homefeast.in | Phone: +91 98765 43210
+- Grievance Officer: Mr. Rajesh Vora (grievance@homefeast.in)
+- Compliance Standards: DPDP Act 2023, WCAG 2.1 AA contrast compliance, FSSAI hygiene checklist.
+2. TECHNICAL STACK & DEPENDENCIES:
+- Framework: Next.js v20+ with TypeScript (96.5% code coverage)
+- Styling: Tailwind CSS (2.9%) with zero-flash Light & Dark mode theme system
+- Database & ORM: PostgreSQL with Prisma ORM
+- Caching & In-Memory Store: Redis
+- Deployment & Infrastructure: Vercel Cloud Platform & Docker Compose (docker-compose.yml)
+- Quality Assurance: ESLint, Jest, 0 Errors, 0 Warnings across production builds.
+3. REPOSITORY DIRECTORY & AUDIT DOCUMENTS:
+- Core Folders: /app, /components, /docs (PRD.md, ERD.md, ARCHITECTURE.md, API_COLLECTION.json), /lib, /prisma, /public, /scripts, /tests, .github/workflows
+- System Audits: ALGORITHM_AUDIT.md, FIELD_VALIDATION_REPORT.md, FIX_PLAN.md, SECURITY_AUDIT.md, TEST_CASES.md, WEBSITE_AUDIT_REPORT.md
+- Configuration Files: Dockerfile, docker-compose.yml, next.config.ts, middleware.ts, tsconfig.json, vercel.json.
+4. USER PORTALS & APPLICATION SITEMAP:
+- Public Routes: / (Home), /search (Multi-city search across Rajkot, Ahmedabad, Surat, Vadodara, Gandhinagar), /about, /contact, /privacy, /terms
+- Customer Experience: /cooks/[id], /checkout (Promo code: FIRSTFEAST), /customer/dashboard (Pause up to 5 days, tracking, disputes)
+- Cook Experience: /cook/register (FSSAI onboarding), /cook/dashboard (7-day menu planner, live dispatch, earnings ₹15k–₹35k/mo)
+- System Admin: /admin/dashboard (Kitchen approval desk, dispute escalation, KPI analytics).
+5. COMMERCIAL SUBSCRIPTION TIERS:
+- Daily Kathiyawadi Plan: ₹120/day (₹120/meal)
+- Weekly Saver Plan: ₹749/week (₹107/meal, 11% savings, Sunday thali & sweet)
+- Monthly Royal Plan: ₹2,799/month (₹93/meal, 17% savings, 5 flexible pause days with rollover).
+Format the entire output into detailed technical sections with full system architecture diagrams, database relationships, API collection specs, and operational workflows.
