@@ -22,17 +22,64 @@ const COOK_SIDEBAR = [
   { key: "earnings", label: "Earnings & Payouts", icon: TrendingUp },
 ];
 
-// Default initial data structures
-const DEFAULT_PROFILE = {
-  shopName: "My Home Kitchen",
-  headCook: "Home Cook",
-  phone: "+91 98765 43210",
-  email: "cook@homefeast.in",
-  bio: "Authentic homemade meals made with fresh ingredients, pure spices, and traditional recipes delivered daily.",
+interface CookProfile {
+  shopName: string;
+  headCook: string;
+  phone: string;
+  email: string;
+  bio: string;
+  fssaiNumber: string;
+  fssaiVerified: boolean;
+  city: string;
+  address: string;
+  serviceAreas: string[];
+  deliveryRadiusKm: number;
+  isOpen: boolean;
+  lunchSlot: string;
+  dinnerSlot: string;
+  pureVeg: boolean;
+  bankName: string;
+  bankAccount: string;
+  bankIfsc: string;
+  bankHolder: string;
+  status?: string;
+}
+
+// Clean structure for newly registered home kitchens
+const EMPTY_PROFILE: CookProfile = {
+  shopName: "",
+  headCook: "",
+  phone: "",
+  email: "",
+  bio: "",
+  fssaiNumber: "",
+  fssaiVerified: false,
+  city: "Rajkot",
+  address: "",
+  serviceAreas: ["Race Course", "Kalavad Road", "Mavdi", "150ft Ring Road", "University Road"],
+  deliveryRadiusKm: 5,
+  isOpen: true,
+  lunchSlot: "12:00 PM – 01:30 PM",
+  dinnerSlot: "07:30 PM – 09:00 PM",
+  pureVeg: true,
+  bankName: "",
+  bankAccount: "",
+  bankIfsc: "",
+  bankHolder: "",
+  status: "approved",
+};
+
+// Default initial data structures for demo purposes
+const DEFAULT_PROFILE: CookProfile = {
+  shopName: "Meenaben's Kitchen",
+  headCook: "Meenaben Patel",
+  phone: "+91 98250 12345",
+  email: "demo@cook.com",
+  bio: "Authentic Gujarati & Kathiyawadi homemade meals made with fresh ingredients, pure spices, and traditional recipes delivered daily.",
   fssaiNumber: "10020042003854",
   fssaiVerified: true,
   city: "Rajkot",
-  address: "Race Course Road",
+  address: "Race Course Road, Rajkot",
   serviceAreas: ["Race Course", "Kalavad Road", "Mavdi", "150ft Ring Road", "University Road"],
   deliveryRadiusKm: 5,
   isOpen: true,
@@ -42,7 +89,8 @@ const DEFAULT_PROFILE = {
   bankName: "State Bank of India",
   bankAccount: "•••• •••• 4892",
   bankIfsc: "SBIN0001234",
-  bankHolder: "Home Cook",
+  bankHolder: "Meenaben Patel",
+  status: "approved",
 };
 
 const DEFAULT_MENU = [
@@ -156,13 +204,14 @@ function deduplicateOrders(items: any[]) {
 export default function CookDashboardPage() {
   const [activeTab, setActiveTab] = useState("dashboard");
 
-  // State initialized with localStorage or defaults
-  const [profile, setProfile] = useState(DEFAULT_PROFILE);
-  const [menuItems, setMenuItems] = useState(DEFAULT_MENU);
-  const [weeklyPlan, setWeeklyPlan] = useState(DEFAULT_WEEKLY_PLAN);
-  const [plans, setPlans] = useState(DEFAULT_PLANS);
+  // State initialized with empty arrays / empty profile so new accounts never show fake data
+  const [profile, setProfile] = useState<CookProfile>(EMPTY_PROFILE);
+  const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [weeklyPlan, setWeeklyPlan] = useState<any[]>(DEFAULT_WEEKLY_PLAN);
+  const [plans, setPlans] = useState<any[]>([]);
   const [subscribers, setSubscribers] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -212,6 +261,8 @@ export default function CookDashboardPage() {
     setTimeout(() => setToastMessage(""), 3500);
   };
 
+  const userScopedKey = (currentUser?.email || "").toLowerCase().replace(/[^a-z0-9]/g, "_");
+
   // Load state from localStorage on client mount
   useEffect(() => {
     setMounted(true);
@@ -230,6 +281,7 @@ export default function CookDashboardPage() {
         const storedUser = localStorage.getItem("hf_user");
         if (storedUser) {
           activeUser = JSON.parse(storedUser);
+          setCurrentUser(activeUser);
           setIsAuthenticated(true);
         } else {
           setIsAuthenticated(false);
@@ -241,57 +293,84 @@ export default function CookDashboardPage() {
       }
 
       const isDemoAccount = activeUser?.email === "demo@cook.com";
+      const userCleanKey = (activeUser?.email || "").toLowerCase().replace(/[^a-z0-9]/g, "_");
       
       // Clean and resolve chef and kitchen names dynamically
       let cookChefName = (activeUser?.name || "Home Cook").trim();
       cookChefName = cookChefName.replace(/['’]s['’]s/gi, "'s").replace(/['’]s$/i, "");
       if (isDemoAccount && (!cookChefName || cookChefName === "Home Cook" || cookChefName.toLowerCase().includes("jeet"))) {
         cookChefName = "Meenaben Patel";
-      } else if (activeUser?.email === "jeet@homefeast.in") {
-        cookChefName = "Jeet Dodiya";
       }
 
       let cookKitchenName = activeUser?.kitchenName ? activeUser.kitchenName.replace(/['’]s['’]s/gi, "'s") : `${cookChefName}'s Kitchen`;
       if (isDemoAccount) {
         cookKitchenName = "Meenaben's Kitchen";
         cookChefName = "Meenaben Patel";
-      } else if (activeUser?.email === "jeet@homefeast.in") {
-        cookKitchenName = "Jeet's Kitchen";
-        cookChefName = "Jeet Dodiya";
       }
 
-      // Load Profile & Synchronize with active logged-in user
+      // Load Profile strictly scoped to the authenticated cook
       try {
-        const storedProfile = localStorage.getItem("hf_cook_profile");
+        const scopedProfile = userCleanKey ? localStorage.getItem(`hf_cook_profile_${userCleanKey}`) : null;
         let profileObj: any = null;
-        if (storedProfile) {
-          profileObj = JSON.parse(storedProfile);
+        if (scopedProfile) {
+          profileObj = JSON.parse(scopedProfile);
+        } else if (isDemoAccount) {
+          const globalProfile = localStorage.getItem("hf_cook_profile");
+          if (globalProfile) profileObj = JSON.parse(globalProfile);
         }
 
-        const needsSync =
-          !profileObj ||
-          (activeUser && (profileObj.email !== activeUser.email || profileObj.headCook !== cookChefName)) ||
-          profileObj.shopName.includes("'s's") ||
-          profileObj.headCook.includes("'s's");
+        if (!profileObj) {
+          if (isDemoAccount) {
+            profileObj = { ...DEFAULT_PROFILE };
+          } else {
+            const cleanPhone = (activeUser?.phone || "").replace(/\D/g, "").slice(0, 10);
+            profileObj = {
+              ...EMPTY_PROFILE,
+              headCook: cookChefName,
+              shopName: cookKitchenName,
+              phone: cleanPhone,
+              email: activeUser?.email || "",
+              bio: `Fresh homemade meals cooked with passion and hygiene by Chef ${cookChefName}. Serving daily tiffins across ${activeUser?.city || "Rajkot"}.`,
+              city: activeUser?.city || "Rajkot",
+              address: activeUser?.address || "",
+              fssaiNumber: activeUser?.fssaiNo || "",
+              fssaiVerified: false,
+              bankHolder: cookChefName,
+              bankName: "",
+              bankAccount: "",
+              bankIfsc: "",
+              status: "approved",
+            };
+          }
+        }
 
-        if (needsSync) {
-          profileObj = {
-            ...(profileObj || DEFAULT_PROFILE),
-            headCook: cookChefName,
-            shopName: cookKitchenName,
-            bankHolder: cookChefName,
-            email: activeUser?.email || (isDemoAccount ? "demo@cook.com" : "cook@homefeast.in"),
-            city: activeUser?.city || "Rajkot",
-          };
-          setProfile(profileObj);
+        // Clean out any stale fake bank info or rakesh junjunwala mentions for non-demo users
+        if (!isDemoAccount) {
+          if (profileObj.bankAccount?.includes("4892") || profileObj.bankAccount?.includes("7899") || profileObj.bankIfsc === "SBIN0001234") {
+            profileObj.bankName = "";
+            profileObj.bankAccount = "";
+            profileObj.bankIfsc = "";
+          }
+          if (profileObj.bio?.toLowerCase().includes("junjunwala") || profileObj.bio?.toLowerCase().includes("rakesh")) {
+            profileObj.bio = `Fresh homemade meals cooked with passion and hygiene by Chef ${cookChefName}. Serving daily tiffins across ${activeUser?.city || "Rajkot"}.`;
+          }
+          if (profileObj.headCook?.toLowerCase().includes("meenaben") || profileObj.shopName?.toLowerCase().includes("meenaben")) {
+            profileObj.headCook = cookChefName;
+            profileObj.shopName = cookKitchenName;
+          }
+        }
+
+        setProfile(profileObj);
+        if (userCleanKey) {
+          localStorage.setItem(`hf_cook_profile_${userCleanKey}`, JSON.stringify(profileObj));
+        }
+        if (isDemoAccount) {
           localStorage.setItem("hf_cook_profile", JSON.stringify(profileObj));
-        } else {
-          setProfile(profileObj);
         }
       } catch {}
 
-      // Sync verified profile from live PostgreSQL backend
-      fetch("/api/v1/cooks")
+      // Sync verified profile and approval status from live PostgreSQL backend
+      fetch("/api/v1/cooks?status=all")
         .then((res) => res.json())
         .then((data) => {
           if (data.success && Array.isArray(data.data)) {
@@ -303,6 +382,7 @@ export default function CookDashboardPage() {
                 (activeUser?.email === "jeet@homefeast.in" && c.kitchenName?.toLowerCase().includes("jeet"))
             );
             if (matched) {
+              const matchedStatus = (matched.status || "pending").toLowerCase();
               setProfile((prev) => {
                 const synced = {
                   ...prev,
@@ -311,8 +391,12 @@ export default function CookDashboardPage() {
                   fssaiNumber: matched.fssaiNo || prev.fssaiNumber,
                   city: matched.city || prev.city,
                   serviceAreas: matched.serviceAreas || prev.serviceAreas,
+                  status: matchedStatus,
+                  fssaiVerified: matchedStatus === "approved",
+                  isOpen: matchedStatus === "approved" ? (prev.isOpen ?? true) : false,
                 };
-                localStorage.setItem("hf_cook_profile", JSON.stringify(synced));
+                if (userCleanKey) localStorage.setItem(`hf_cook_profile_${userCleanKey}`, JSON.stringify(synced));
+                if (isDemoAccount) localStorage.setItem("hf_cook_profile", JSON.stringify(synced));
                 return synced;
               });
             }
@@ -320,27 +404,55 @@ export default function CookDashboardPage() {
         })
         .catch(() => {});
 
-      // Load Menu
+      // Load Menu scoped strictly to this authenticated cook
       try {
-        const storedMenu = localStorage.getItem("hf_cook_menu");
-        if (storedMenu) setMenuItems(JSON.parse(storedMenu));
+        const scopedMenu = userCleanKey ? localStorage.getItem(`hf_cook_menu_${userCleanKey}`) : null;
+        if (scopedMenu) {
+          setMenuItems(JSON.parse(scopedMenu));
+        } else if (isDemoAccount) {
+          const globalMenu = localStorage.getItem("hf_cook_menu");
+          setMenuItems(globalMenu ? JSON.parse(globalMenu) : DEFAULT_MENU);
+        } else {
+          setMenuItems([]);
+        }
+      } catch {
+        setMenuItems([]);
+      }
+
+      // Load Weekly Plan scoped strictly to this authenticated cook
+      try {
+        const scopedWeekly = userCleanKey ? localStorage.getItem(`hf_cook_weekly_menu_${userCleanKey}`) : null;
+        if (scopedWeekly) {
+          setWeeklyPlan(JSON.parse(scopedWeekly));
+        } else if (isDemoAccount) {
+          const globalWeekly = localStorage.getItem("hf_cook_weekly_menu");
+          if (globalWeekly) setWeeklyPlan(JSON.parse(globalWeekly));
+        } else {
+          setWeeklyPlan(DEFAULT_WEEKLY_PLAN);
+        }
       } catch {}
 
-      // Load Weekly Plan
+      // Load Plans scoped strictly to this authenticated cook
       try {
-        const storedWeekly = localStorage.getItem("hf_cook_weekly_menu");
-        if (storedWeekly) setWeeklyPlan(JSON.parse(storedWeekly));
-      } catch {}
+        const scopedPlans = userCleanKey ? localStorage.getItem(`hf_cook_plans_${userCleanKey}`) : null;
+        if (scopedPlans) {
+          setPlans(JSON.parse(scopedPlans));
+        } else if (isDemoAccount) {
+          const globalPlans = localStorage.getItem("hf_cook_plans");
+          setPlans(globalPlans ? JSON.parse(globalPlans) : DEFAULT_PLANS);
+        } else {
+          setPlans([]);
+        }
+      } catch {
+        setPlans([]);
+      }
 
-      // Load Plans
+      // Load Subscribers scoped strictly to this authenticated cook
       try {
-        const storedPlans = localStorage.getItem("hf_cook_plans");
-        if (storedPlans) setPlans(JSON.parse(storedPlans));
-      } catch {}
+        const userCleanKey = (activeUser?.email || "").toLowerCase().replace(/[^a-z0-9]/g, "_");
+        const scopedSubsData = userCleanKey ? localStorage.getItem(`hf_cook_subscribers_${userCleanKey}`) : null;
+        const storedSubscribers = scopedSubsData || (isDemoAccount ? localStorage.getItem("hf_cook_subscribers") : null);
 
-      // Load Subscribers from localStorage and live API
-      try {
-        const storedSubscribers = localStorage.getItem("hf_cook_subscribers");
         if (storedSubscribers) {
           const parsedSubs = JSON.parse(storedSubscribers);
           const seenSubKeys = new Set<string>();
@@ -351,20 +463,31 @@ export default function CookDashboardPage() {
             return true;
           });
           setSubscribers(dedupedSubs);
+        } else {
+          setSubscribers([]);
         }
-      } catch {}
+      } catch {
+        setSubscribers([]);
+      }
 
-      // Load Orders from localStorage with deduplication
+      // Load Orders scoped strictly to this authenticated cook
       try {
-        const storedOrders = localStorage.getItem("hf_cook_orders");
+        const userCleanKey = (activeUser?.email || "").toLowerCase().replace(/[^a-z0-9]/g, "_");
+        const scopedOrdersData = userCleanKey ? localStorage.getItem(`hf_cook_orders_${userCleanKey}`) : null;
+        const storedOrders = scopedOrdersData || (isDemoAccount ? localStorage.getItem("hf_cook_orders") : null);
+
         if (storedOrders) {
           const parsedOrders = JSON.parse(storedOrders);
           const dedupedOrders = deduplicateOrders(parsedOrders);
           setOrders(dedupedOrders);
+        } else {
+          setOrders([]);
         }
-      } catch {}
+      } catch {
+        setOrders([]);
+      }
 
-      // Live Backend API Query: Connect orders for this specific cook
+      // Live Backend API Query: Connect orders strictly for this specific cook
       const queryParams = new URLSearchParams();
       if (activeUser?.id) queryParams.set("cookId", activeUser.id);
       if (activeUser?.email) queryParams.set("email", activeUser.email);
@@ -385,11 +508,19 @@ export default function CookDashboardPage() {
               packedItems: o.packedItems || { sabzi: false, rotis: false, dal: false, rice: false },
               items: o.items && o.items.length > 0 ? o.items : ["Daily Gujarati Thali", "Phulka Roti", "Dal/Kadhi", "Sabzi", "Rice"],
             }));
-            setOrders((prev) => {
-              const merged = deduplicateOrders([...formatted, ...prev]);
-              if (typeof window !== "undefined") localStorage.setItem("hf_cook_orders", JSON.stringify(merged));
-              return merged;
-            });
+            const userCleanKey = (activeUser?.email || "").toLowerCase().replace(/[^a-z0-9]/g, "_");
+            if (isDemoAccount) {
+              setOrders((prev) => {
+                const merged = deduplicateOrders([...formatted, ...prev]);
+                if (typeof window !== "undefined") localStorage.setItem("hf_cook_orders", JSON.stringify(merged));
+                return merged;
+              });
+            } else {
+              setOrders(formatted);
+              if (typeof window !== "undefined" && userCleanKey) {
+                localStorage.setItem(`hf_cook_orders_${userCleanKey}`, JSON.stringify(formatted));
+              }
+            }
           }
         })
         .catch(() => {});
@@ -416,12 +547,20 @@ export default function CookDashboardPage() {
               dietPreference: s.dietPreference || "Standard pure veg",
               status: s.status || "ACTIVE",
             }));
-            setSubscribers((prev) => {
-              const prevIds = new Set(prev.map((p) => p.id));
-              const merged = [...prev, ...formattedSubs.filter((f: any) => !prevIds.has(f.id))];
-              if (typeof window !== "undefined") localStorage.setItem("hf_cook_subscribers", JSON.stringify(merged));
-              return merged;
-            });
+            const userCleanKey = (activeUser?.email || "").toLowerCase().replace(/[^a-z0-9]/g, "_");
+            if (isDemoAccount) {
+              setSubscribers((prev) => {
+                const prevIds = new Set(prev.map((p) => p.id));
+                const merged = [...prev, ...formattedSubs.filter((f: any) => !prevIds.has(f.id))];
+                if (typeof window !== "undefined") localStorage.setItem("hf_cook_subscribers", JSON.stringify(merged));
+                return merged;
+              });
+            } else {
+              setSubscribers(formattedSubs);
+              if (typeof window !== "undefined" && userCleanKey) {
+                localStorage.setItem(`hf_cook_subscribers_${userCleanKey}`, JSON.stringify(formattedSubs));
+              }
+            }
           }
         })
         .catch(() => {});
@@ -432,6 +571,7 @@ export default function CookDashboardPage() {
   const saveProfile = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (typeof window !== "undefined") {
+      if (userScopedKey) localStorage.setItem(`hf_cook_profile_${userScopedKey}`, JSON.stringify(profile));
       localStorage.setItem("hf_cook_profile", JSON.stringify(profile));
       // Also update hf_user kitchen name if appropriate
       try {
@@ -489,13 +629,19 @@ export default function CookDashboardPage() {
   };
 
   const toggleKitchenStatus = () => {
+    if (profile.status === "pending") {
+      showToast("⏳ Your kitchen is pending Admin Approval. It will automatically go LIVE once verified by Admin.");
+      return;
+    }
     const updated = { ...profile, isOpen: !profile.isOpen };
     setProfile(updated);
     if (typeof window !== "undefined") {
+      if (userScopedKey) localStorage.setItem(`hf_cook_profile_${userScopedKey}`, JSON.stringify(updated));
       localStorage.setItem("hf_cook_profile", JSON.stringify(updated));
     }
     showToast(updated.isOpen ? "Kitchen is now LIVE & accepting orders!" : "Kitchen paused. Not taking new orders.");
   };
+
 
   // Menu Handlers
   const handleAddDish = (e: React.FormEvent) => {
@@ -518,7 +664,10 @@ export default function CookDashboardPage() {
     };
     const updated = [dish, ...menuItems];
     setMenuItems(updated);
-    if (typeof window !== "undefined") localStorage.setItem("hf_cook_menu", JSON.stringify(updated));
+    if (typeof window !== "undefined") {
+      if (userScopedKey) localStorage.setItem(`hf_cook_menu_${userScopedKey}`, JSON.stringify(updated));
+      localStorage.setItem("hf_cook_menu", JSON.stringify(updated));
+    }
     setNewDish({ name: "", category: "Main Sabzi", type: "veg", price: 50, mealTime: "Both", desc: "" });
     setShowAddDishModal(false);
     showToast(`Added "${dish.name}" to menu catalog!`);
@@ -529,7 +678,10 @@ export default function CookDashboardPage() {
     if (!editingDish) return;
     const updated = menuItems.map(d => d.id === editingDish.id ? editingDish : d);
     setMenuItems(updated);
-    if (typeof window !== "undefined") localStorage.setItem("hf_cook_menu", JSON.stringify(updated));
+    if (typeof window !== "undefined") {
+      if (userScopedKey) localStorage.setItem(`hf_cook_menu_${userScopedKey}`, JSON.stringify(updated));
+      localStorage.setItem("hf_cook_menu", JSON.stringify(updated));
+    }
     setEditingDish(null);
     showToast(`Updated "${editingDish.name}" successfully!`);
   };
@@ -537,14 +689,20 @@ export default function CookDashboardPage() {
   const toggleDishStock = (id: string) => {
     const updated = menuItems.map(d => d.id === id ? { ...d, available: !d.available } : d);
     setMenuItems(updated);
-    if (typeof window !== "undefined") localStorage.setItem("hf_cook_menu", JSON.stringify(updated));
+    if (typeof window !== "undefined") {
+      if (userScopedKey) localStorage.setItem(`hf_cook_menu_${userScopedKey}`, JSON.stringify(updated));
+      localStorage.setItem("hf_cook_menu", JSON.stringify(updated));
+    }
   };
 
   const handleDeleteDish = (id: string, name: string) => {
     if (!confirm(`Are you sure you want to remove "${name}" from your menu?`)) return;
     const updated = menuItems.filter(d => d.id !== id);
     setMenuItems(updated);
-    if (typeof window !== "undefined") localStorage.setItem("hf_cook_menu", JSON.stringify(updated));
+    if (typeof window !== "undefined") {
+      if (userScopedKey) localStorage.setItem(`hf_cook_menu_${userScopedKey}`, JSON.stringify(updated));
+      localStorage.setItem("hf_cook_menu", JSON.stringify(updated));
+    }
     showToast(`Removed "${name}" from menu.`);
   };
 
@@ -554,13 +712,19 @@ export default function CookDashboardPage() {
     if (!dayToEdit) return;
     const updated = weeklyPlan.map((d, idx) => idx === selectedDayIndex ? dayToEdit : d);
     setWeeklyPlan(updated);
-    if (typeof window !== "undefined") localStorage.setItem("hf_cook_weekly_menu", JSON.stringify(updated));
+    if (typeof window !== "undefined") {
+      if (userScopedKey) localStorage.setItem(`hf_cook_weekly_menu_${userScopedKey}`, JSON.stringify(updated));
+      localStorage.setItem("hf_cook_weekly_menu", JSON.stringify(updated));
+    }
     setShowEditDayModal(false);
     showToast(`Updated menu for ${dayToEdit.day}!`);
   };
 
   const handlePublishWeeklyPlan = () => {
-    if (typeof window !== "undefined") localStorage.setItem("hf_cook_weekly_menu", JSON.stringify(weeklyPlan));
+    if (typeof window !== "undefined") {
+      if (userScopedKey) localStorage.setItem(`hf_cook_weekly_menu_${userScopedKey}`, JSON.stringify(weeklyPlan));
+      localStorage.setItem("hf_cook_weekly_menu", JSON.stringify(weeklyPlan));
+    }
     showToast("7-Day Rotating Weekly Menu published to all subscribers!");
   };
 
@@ -570,7 +734,10 @@ export default function CookDashboardPage() {
     if (!editingPlan) return;
     const updated = plans.map(p => p.id === editingPlan.id ? editingPlan : p);
     setPlans(updated);
-    if (typeof window !== "undefined") localStorage.setItem("hf_cook_plans", JSON.stringify(updated));
+    if (typeof window !== "undefined") {
+      if (userScopedKey) localStorage.setItem(`hf_cook_plans_${userScopedKey}`, JSON.stringify(updated));
+      localStorage.setItem("hf_cook_plans", JSON.stringify(updated));
+    }
     setShowEditPlanModal(false);
     showToast(`Saved settings for ${editingPlan.name}!`);
   };
@@ -591,7 +758,10 @@ export default function CookDashboardPage() {
     };
     const updated = [...plans, plan];
     setPlans(updated);
-    if (typeof window !== "undefined") localStorage.setItem("hf_cook_plans", JSON.stringify(updated));
+    if (typeof window !== "undefined") {
+      if (userScopedKey) localStorage.setItem(`hf_cook_plans_${userScopedKey}`, JSON.stringify(updated));
+      localStorage.setItem("hf_cook_plans", JSON.stringify(updated));
+    }
     setShowAddPlanModal(false);
     setNewPlan({
       name: "",
@@ -611,7 +781,10 @@ export default function CookDashboardPage() {
     if (!confirm(`Are you sure you want to remove plan "${name}"?`)) return;
     const updated = plans.filter(p => p.id !== id);
     setPlans(updated);
-    if (typeof window !== "undefined") localStorage.setItem("hf_cook_plans", JSON.stringify(updated));
+    if (typeof window !== "undefined") {
+      if (userScopedKey) localStorage.setItem(`hf_cook_plans_${userScopedKey}`, JSON.stringify(updated));
+      localStorage.setItem("hf_cook_plans", JSON.stringify(updated));
+    }
     showToast(`Removed plan "${name}".`);
   };
 
@@ -619,11 +792,12 @@ export default function CookDashboardPage() {
   const handleAddSubscriber = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSubscriber.name || !newSubscriber.phone) return;
+    const cleanPhone = newSubscriber.phone.replace(/\D/g, "").slice(0, 10);
     const totalDays = newSubscriber.plan.includes("30") ? 30 : newSubscriber.plan.includes("7") ? 7 : 1;
     const sub = {
       id: `sub_${Date.now()}`,
       name: newSubscriber.name,
-      phone: newSubscriber.phone,
+      phone: cleanPhone,
       plan: newSubscriber.plan,
       slot: newSubscriber.slot,
       address: newSubscriber.address || "Rajkot City",
@@ -635,7 +809,6 @@ export default function CookDashboardPage() {
     };
     const updated = [sub, ...subscribers];
     setSubscribers(updated);
-    if (typeof window !== "undefined") localStorage.setItem("hf_cook_subscribers", JSON.stringify(updated));
 
     // Also generate a dispatch order for today
     const orderTicket = {
@@ -651,7 +824,15 @@ export default function CookDashboardPage() {
     };
     const updatedOrders = deduplicateOrders([orderTicket, ...orders]);
     setOrders(updatedOrders);
-    if (typeof window !== "undefined") localStorage.setItem("hf_cook_orders", JSON.stringify(updatedOrders));
+
+    if (typeof window !== "undefined") {
+      if (userScopedKey) {
+        localStorage.setItem(`hf_cook_subscribers_${userScopedKey}`, JSON.stringify(updated));
+        localStorage.setItem(`hf_cook_orders_${userScopedKey}`, JSON.stringify(updatedOrders));
+      }
+      localStorage.setItem("hf_cook_subscribers", JSON.stringify(updated));
+      localStorage.setItem("hf_cook_orders", JSON.stringify(updatedOrders));
+    }
 
     setShowAddSubscriberModal(false);
     setNewSubscriber({ name: "", phone: "", plan: "Weekly Saver Plan (7 Days)", slot: "Lunch (12–1:30 PM)", address: "", dietPreference: "Pure Veg, less spicy" });
@@ -667,7 +848,10 @@ export default function CookDashboardPage() {
       return s;
     });
     setSubscribers(updated);
-    if (typeof window !== "undefined") localStorage.setItem("hf_cook_subscribers", JSON.stringify(updated));
+    if (typeof window !== "undefined") {
+      if (userScopedKey) localStorage.setItem(`hf_cook_subscribers_${userScopedKey}`, JSON.stringify(updated));
+      localStorage.setItem("hf_cook_subscribers", JSON.stringify(updated));
+    }
     showToast("Subscriber status updated.");
   };
 
@@ -675,15 +859,18 @@ export default function CookDashboardPage() {
     if (!confirm(`Cancel subscription for ${name}?`)) return;
     const updated = subscribers.filter(s => s.id !== id);
     setSubscribers(updated);
-    if (typeof window !== "undefined") localStorage.setItem("hf_cook_subscribers", JSON.stringify(updated));
+    if (typeof window !== "undefined") {
+      if (userScopedKey) localStorage.setItem(`hf_cook_subscribers_${userScopedKey}`, JSON.stringify(updated));
+      localStorage.setItem("hf_cook_subscribers", JSON.stringify(updated));
+    }
     showToast(`Removed subscription for ${name}.`);
   };
 
   const handleSimulateTestSubscriber = () => {
     const demoSub = {
       id: `sub_${Date.now()}`,
-      name: "Arjun Verma",
-      phone: "+91 98251 23456",
+      name: "Bhavin Patel",
+      phone: "9825123456",
       plan: "Weekly Saver Plan (7 Days)",
       slot: "Lunch (12:00 PM – 01:30 PM)",
       address: "Flat 402, Shivalik Heights, Kalavad Road, Rajkot",
@@ -695,7 +882,6 @@ export default function CookDashboardPage() {
     };
     const updatedSubs = [demoSub, ...subscribers];
     setSubscribers(updatedSubs);
-    if (typeof window !== "undefined") localStorage.setItem("hf_cook_subscribers", JSON.stringify(updatedSubs));
 
     const testOrder = {
       id: `ord_${Date.now()}`,
@@ -710,7 +896,15 @@ export default function CookDashboardPage() {
     };
     const updatedOrders = deduplicateOrders([testOrder, ...orders]);
     setOrders(updatedOrders);
-    if (typeof window !== "undefined") localStorage.setItem("hf_cook_orders", JSON.stringify(updatedOrders));
+
+    if (typeof window !== "undefined") {
+      if (userScopedKey) {
+        localStorage.setItem(`hf_cook_subscribers_${userScopedKey}`, JSON.stringify(updatedSubs));
+        localStorage.setItem(`hf_cook_orders_${userScopedKey}`, JSON.stringify(updatedOrders));
+      }
+      localStorage.setItem("hf_cook_subscribers", JSON.stringify(updatedSubs));
+      localStorage.setItem("hf_cook_orders", JSON.stringify(updatedOrders));
+    }
 
     showToast("Simulated test subscriber & generated today's live packing ticket!");
   };
@@ -719,7 +913,10 @@ export default function CookDashboardPage() {
   const updateOrderStatus = (id: string, newStatus: string) => {
     const updated = orders.map(o => o.id === id ? { ...o, status: newStatus } : o);
     setOrders(updated);
-    if (typeof window !== "undefined") localStorage.setItem("hf_cook_orders", JSON.stringify(updated));
+    if (typeof window !== "undefined") {
+      if (userScopedKey) localStorage.setItem(`hf_cook_orders_${userScopedKey}`, JSON.stringify(updated));
+      localStorage.setItem("hf_cook_orders", JSON.stringify(updated));
+    }
     showToast(`Order status updated to: ${newStatus.replace(/_/g, " ")}`);
 
     fetch("/api/v1/orders", {
@@ -743,7 +940,10 @@ export default function CookDashboardPage() {
       return o;
     });
     setOrders(updated);
-    if (typeof window !== "undefined") localStorage.setItem("hf_cook_orders", JSON.stringify(updated));
+    if (typeof window !== "undefined") {
+      if (userScopedKey) localStorage.setItem(`hf_cook_orders_${userScopedKey}`, JSON.stringify(updated));
+      localStorage.setItem("hf_cook_orders", JSON.stringify(updated));
+    }
 
     fetch("/api/v1/orders", {
       method: "PATCH",
@@ -755,7 +955,10 @@ export default function CookDashboardPage() {
   const clearDeliveredOrders = () => {
     const remaining = orders.filter(o => o.status !== "DELIVERED");
     setOrders(remaining);
-    if (typeof window !== "undefined") localStorage.setItem("hf_cook_orders", JSON.stringify(remaining));
+    if (typeof window !== "undefined") {
+      if (userScopedKey) localStorage.setItem(`hf_cook_orders_${userScopedKey}`, JSON.stringify(remaining));
+      localStorage.setItem("hf_cook_orders", JSON.stringify(remaining));
+    }
     showToast("Delivered orders cleared from dispatch queue.");
   };
 
@@ -857,8 +1060,8 @@ export default function CookDashboardPage() {
               <p style={{ fontFamily: "Poppins", fontWeight: 700, color: "var(--text)", margin: 0, fontSize: "0.95rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {profile.shopName}
               </p>
-              <span className="badge badge-active" style={{ fontSize: "0.68rem", marginTop: "0.25rem" }}>
-                ✓ {profile.fssaiVerified ? "FSSAI Verified" : "Home Cook"} ({profile.city})
+              <span className={`badge ${profile.status === "pending" ? "badge-pending" : "badge-active"}`} style={{ fontSize: "0.68rem", marginTop: "0.25rem" }}>
+                {profile.status === "pending" ? "⏳ Verification Pending" : "✓ FSSAI Verified"} ({profile.city})
               </span>
             </div>
           </div>
@@ -871,9 +1074,21 @@ export default function CookDashboardPage() {
               width: "100%",
               padding: "0.5rem 0.75rem",
               borderRadius: "8px",
-              border: profile.isOpen ? "1px solid var(--secondary)" : "1px solid var(--danger)",
-              background: profile.isOpen ? "rgba(16, 185, 129, 0.1)" : "rgba(239, 68, 68, 0.1)",
-              color: profile.isOpen ? "var(--secondary)" : "var(--danger)",
+              border: profile.status === "pending"
+                ? "1px solid var(--accent)"
+                : profile.isOpen
+                ? "1px solid var(--secondary)"
+                : "1px solid var(--danger)",
+              background: profile.status === "pending"
+                ? "rgba(232, 101, 10, 0.1)"
+                : profile.isOpen
+                ? "rgba(16, 185, 129, 0.1)"
+                : "rgba(239, 68, 68, 0.1)",
+              color: profile.status === "pending"
+                ? "var(--accent)"
+                : profile.isOpen
+                ? "var(--secondary)"
+                : "var(--danger)",
               fontSize: "0.78rem",
               fontWeight: 700,
               display: "flex",
@@ -888,10 +1103,18 @@ export default function CookDashboardPage() {
                 width: 8,
                 height: 8,
                 borderRadius: "50%",
-                background: profile.isOpen ? "var(--secondary)" : "var(--danger)",
+                background: profile.status === "pending"
+                  ? "var(--accent)"
+                  : profile.isOpen
+                  ? "var(--secondary)"
+                  : "var(--danger)",
               }}
             />
-            {profile.isOpen ? "Kitchen OPEN (Accepting)" : "Kitchen CLOSED (Paused)"}
+            {profile.status === "pending"
+              ? "🔒 Awaiting Admin Approval"
+              : profile.isOpen
+              ? "Kitchen OPEN (Accepting)"
+              : "Kitchen CLOSED (Paused)"}
           </button>
         </div>
 
@@ -1004,12 +1227,35 @@ export default function CookDashboardPage() {
                   fontWeight: 700,
                   padding: "0.25rem 0.65rem",
                   borderRadius: "20px",
-                  background: profile.isOpen ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                  color: profile.isOpen ? "var(--secondary)" : "var(--danger)",
+                  background: profile.status === "pending"
+                    ? "rgba(232, 101, 10, 0.15)"
+                    : profile.isOpen
+                    ? "rgba(16, 185, 129, 0.15)"
+                    : "rgba(239, 68, 68, 0.15)",
+                  color: profile.status === "pending"
+                    ? "var(--accent)"
+                    : profile.isOpen
+                    ? "var(--secondary)"
+                    : "var(--danger)",
                 }}
               >
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: profile.isOpen ? "var(--secondary)" : "var(--danger)" }} />
-                {profile.isOpen ? "Accepting Orders" : "Closed / Off Duty"}
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: profile.status === "pending"
+                      ? "var(--accent)"
+                      : profile.isOpen
+                      ? "var(--secondary)"
+                      : "var(--danger)",
+                  }}
+                />
+                {profile.status === "pending"
+                  ? "Pending Admin Approval"
+                  : profile.isOpen
+                  ? "Accepting Orders"
+                  : "Closed / Off Duty"}
               </span>
             </div>
             <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", margin: "0.35rem 0 0" }}>
@@ -1034,6 +1280,51 @@ export default function CookDashboardPage() {
             </button>
           </div>
         </header>
+
+        {/* Pending Admin Review Warning Banner */}
+        {profile.status === "pending" && (
+          <div
+            style={{
+              background: "rgba(232, 101, 10, 0.08)",
+              border: "1.5px solid var(--primary)",
+              borderRadius: "var(--radius)",
+              padding: "1.25rem 1.5rem",
+              marginBottom: "2rem",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "1rem",
+            }}
+          >
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: "50%",
+                background: "var(--primary)",
+                color: "white",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Clock size={22} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
+                <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.0625rem", color: "var(--text)", margin: 0 }}>
+                  Kitchen Registration Under Review (Pending Admin Approval)
+                </h3>
+                <span className="badge badge-pending" style={{ fontSize: "0.7rem" }}>
+                  Not Live Yet
+                </span>
+              </div>
+              <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", margin: 0, lineHeight: 1.5 }}>
+                Your kitchen is currently under verification by the HomeFeast Administrator team. Customers cannot see your profile on search or place orders until approval is granted in the Admin Console. Once approved, your kitchen will automatically become <strong>LIVE & Active</strong>.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* ------------------------------------------------------------- */}
         {/* TAB 1: OVERVIEW DASHBOARD */}
@@ -1180,7 +1471,7 @@ export default function CookDashboardPage() {
                 </div>
                 <span className="badge badge-success" style={{ fontSize: "0.75rem" }}>+18% Growth</span>
               </div>
-              <EarningsChart />
+              <EarningsChart orders={orders} isDemo={currentUser?.email === "demo@cook.com"} />
             </div>
           </div>
         )}
@@ -1234,13 +1525,16 @@ export default function CookDashboardPage() {
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.25rem" }}>
                     <div>
-                      <label className="label">Phone / WhatsApp Number *</label>
+                      <label className="label">Phone / WhatsApp Number (10 digits) *</label>
                       <input
-                        type="text"
+                        type="tel"
                         required
+                        maxLength={10}
+                        pattern="[6-9][0-9]{9}"
+                        placeholder="10-digit mobile number"
                         className="input"
                         value={profile.phone}
-                        onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                        onChange={(e) => setProfile({ ...profile, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
                       />
                     </div>
                     <div>
@@ -1360,6 +1654,7 @@ export default function CookDashboardPage() {
                       <input
                         type="text"
                         className="input"
+                        placeholder="e.g. State Bank of India, HDFC Bank"
                         value={profile.bankName}
                         onChange={(e) => setProfile({ ...profile, bankName: e.target.value })}
                       />
@@ -1371,6 +1666,7 @@ export default function CookDashboardPage() {
                         <input
                           type="text"
                           className="input"
+                          placeholder="e.g. 123456789012"
                           value={profile.bankAccount}
                           onChange={(e) => setProfile({ ...profile, bankAccount: e.target.value })}
                         />
@@ -1380,6 +1676,7 @@ export default function CookDashboardPage() {
                         <input
                           type="text"
                           className="input"
+                          placeholder="e.g. SBIN0001234"
                           value={profile.bankIfsc}
                           onChange={(e) => setProfile({ ...profile, bankIfsc: e.target.value })}
                         />
@@ -1490,74 +1787,100 @@ export default function CookDashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {menuItems
-                    .filter(d => menuFilterCategory === "All" || d.category === menuFilterCategory)
-                    .filter(d => !menuSearchQuery || d.name.toLowerCase().includes(menuSearchQuery.toLowerCase()))
-                    .map((dish) => (
-                      <tr key={dish.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                        <td style={{ padding: "1rem 1.25rem" }}>
-                          <p style={{ fontWeight: 700, color: "var(--text)", margin: 0, fontSize: "0.9375rem" }}>{dish.name}</p>
-                          {dish.desc && <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: "0.2rem 0 0" }}>{dish.desc}</p>}
-                        </td>
-                        <td style={{ padding: "1rem 1.25rem", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
-                          <span style={{ padding: "0.25rem 0.5rem", borderRadius: "6px", background: "var(--surface-alt)", border: "1px solid var(--border)" }}>
-                            {dish.category}
-                          </span>
-                        </td>
-                        <td style={{ padding: "1rem 1.25rem", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
-                          {dish.mealTime}
-                        </td>
-                        <td style={{ padding: "1rem 1.25rem" }}>
-                          <span className={`badge ${dish.type === "veg" ? "badge-veg" : "badge-nonveg"}`}>
-                            <span className={dish.type === "veg" ? "veg-dot" : "nonveg-dot"} />
-                            {dish.type.toUpperCase()}
-                          </span>
-                        </td>
-                        <td style={{ padding: "1rem 1.25rem", fontWeight: 700, color: "var(--text)", fontSize: "0.95rem" }}>
-                          ₹{dish.price}
-                        </td>
-                        <td style={{ padding: "1rem 1.25rem" }}>
+                  {menuItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ padding: "3.5rem 1.5rem", textAlign: "center" }}>
+                        <div style={{ maxWidth: 440, margin: "0 auto" }}>
+                          <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(235, 94, 40, 0.12)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.25rem" }}>
+                            <ChefHat size={32} />
+                          </div>
+                          <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.15rem", color: "var(--text)", margin: "0 0 0.5rem" }}>
+                            No dishes added yet
+                          </h3>
+                          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", margin: "0 0 1.5rem", lineHeight: 1.6 }}>
+                            Start building your tiffin menu by adding your signature gravies, sabzis, rotis, dals, and regional specialties.
+                          </p>
                           <button
                             type="button"
-                            onClick={() => toggleDishStock(dish.id)}
-                            style={{
-                              padding: "0.3rem 0.75rem",
-                              borderRadius: "20px",
-                              border: "none",
-                              background: dish.available ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                              color: dish.available ? "var(--secondary)" : "var(--danger)",
-                              fontSize: "0.75rem",
-                              fontWeight: 700,
-                              cursor: "pointer",
-                            }}
+                            onClick={() => setShowAddDishModal(true)}
+                            className="btn btn-primary"
+                            style={{ padding: "0.5rem 1.25rem", margin: "0 auto" }}
                           >
-                            {dish.available ? "✓ In Stock" : "✗ Sold Out"}
+                            <Plus size={16} /> Add Your First Dish
                           </button>
-                        </td>
-                        <td style={{ padding: "1rem 1.25rem" }}>
-                          <div style={{ display: "flex", gap: "0.5rem" }}>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    menuItems
+                      .filter(d => menuFilterCategory === "All" || d.category === menuFilterCategory)
+                      .filter(d => !menuSearchQuery || d.name.toLowerCase().includes(menuSearchQuery.toLowerCase()))
+                      .map((dish) => (
+                        <tr key={dish.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                          <td style={{ padding: "1rem 1.25rem" }}>
+                            <p style={{ fontWeight: 700, color: "var(--text)", margin: 0, fontSize: "0.9375rem" }}>{dish.name}</p>
+                            {dish.desc && <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: "0.2rem 0 0" }}>{dish.desc}</p>}
+                          </td>
+                          <td style={{ padding: "1rem 1.25rem", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
+                            <span style={{ padding: "0.25rem 0.5rem", borderRadius: "6px", background: "var(--surface-alt)", border: "1px solid var(--border)" }}>
+                              {dish.category}
+                            </span>
+                          </td>
+                          <td style={{ padding: "1rem 1.25rem", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
+                            {dish.mealTime}
+                          </td>
+                          <td style={{ padding: "1rem 1.25rem" }}>
+                            <span className={`badge ${dish.type === "veg" ? "badge-veg" : "badge-nonveg"}`}>
+                              <span className={dish.type === "veg" ? "veg-dot" : "nonveg-dot"} />
+                              {dish.type.toUpperCase()}
+                            </span>
+                          </td>
+                          <td style={{ padding: "1rem 1.25rem", fontWeight: 700, color: "var(--text)", fontSize: "0.95rem" }}>
+                            ₹{dish.price}
+                          </td>
+                          <td style={{ padding: "1rem 1.25rem" }}>
                             <button
                               type="button"
-                              onClick={() => setEditingDish(dish)}
-                              className="btn btn-ghost"
-                              style={{ padding: "0.3rem 0.5rem" }}
-                              aria-label="Edit dish"
+                              onClick={() => toggleDishStock(dish.id)}
+                              style={{
+                                padding: "0.3rem 0.75rem",
+                                borderRadius: "20px",
+                                border: "none",
+                                background: dish.available ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
+                                color: dish.available ? "var(--secondary)" : "var(--danger)",
+                                fontSize: "0.75rem",
+                                fontWeight: 700,
+                                cursor: "pointer",
+                              }}
                             >
-                              <Edit2 size={15} />
+                              {dish.available ? "✓ In Stock" : "✗ Sold Out"}
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteDish(dish.id, dish.name)}
-                              className="btn btn-ghost"
-                              style={{ color: "var(--danger)", padding: "0.3rem 0.5rem" }}
-                              aria-label="Delete dish"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td style={{ padding: "1rem 1.25rem" }}>
+                            <div style={{ display: "flex", gap: "0.5rem" }}>
+                              <button
+                                type="button"
+                                onClick={() => setEditingDish(dish)}
+                                className="btn btn-ghost"
+                                style={{ padding: "0.3rem 0.5rem" }}
+                                aria-label="Edit dish"
+                              >
+                                <Edit2 size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDish(dish.id, dish.name)}
+                                className="btn btn-ghost"
+                                style={{ color: "var(--danger)", padding: "0.3rem 0.5rem" }}
+                                aria-label="Delete dish"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -2046,88 +2369,110 @@ export default function CookDashboardPage() {
             </div>
 
             {/* Plans Grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem", marginBottom: "2rem" }}>
-              {plans.map((p) => {
-                const perMeal = Math.round(p.price / Math.max(1, p.mealsIncluded));
-                const cookTakeHome = Math.round(p.price * 0.90);
-                return (
-                  <div
-                    key={p.id}
-                    className="card"
-                    style={{
-                      padding: "2rem",
-                      border: p.badge === "Popular" ? "2px solid var(--primary)" : "1px solid var(--border)",
-                      display: "flex",
-                      flexDirection: "column",
-                      position: "relative",
-                    }}
+            <div style={{ display: "grid", gridTemplateColumns: plans.length === 0 ? "1fr" : "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem", marginBottom: "2rem" }}>
+              {plans.length === 0 ? (
+                <div className="card" style={{ padding: "3.5rem 1.5rem", textAlign: "center", border: "1px dashed var(--border)" }}>
+                  <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(232, 101, 10, 0.12)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.25rem" }}>
+                    <Calendar size={32} />
+                  </div>
+                  <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.15rem", color: "var(--text)", margin: "0 0 0.5rem" }}>
+                    No subscription plans configured yet
+                  </h3>
+                  <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", maxWidth: 440, margin: "0 auto 1.5rem", lineHeight: 1.6 }}>
+                    Create daily trial, weekly saver, or monthly meal subscription packages so neighborhood customers can subscribe to your tiffins.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPlanModal(true)}
+                    className="btn btn-primary"
+                    style={{ padding: "0.5rem 1.25rem", margin: "0 auto" }}
                   >
-                    {p.badge && (
-                      <span
-                        className="badge badge-primary"
-                        style={{ position: "absolute", top: "1rem", right: "1rem" }}
-                      >
-                        {p.badge}
-                      </span>
-                    )}
+                    <Plus size={16} /> Add First Plan
+                  </button>
+                </div>
+              ) : (
+                plans.map((p) => {
+                  const perMeal = Math.round(p.price / Math.max(1, p.mealsIncluded));
+                  const cookTakeHome = Math.round(p.price * 0.90);
+                  return (
+                    <div
+                      key={p.id}
+                      className="card"
+                      style={{
+                        padding: "2rem",
+                        border: p.badge === "Popular" ? "2px solid var(--primary)" : "1px solid var(--border)",
+                        display: "flex",
+                        flexDirection: "column",
+                        position: "relative",
+                      }}
+                    >
+                      {p.badge && (
+                        <span
+                          className="badge badge-primary"
+                          style={{ position: "absolute", top: "1rem", right: "1rem" }}
+                        >
+                          {p.badge}
+                        </span>
+                      )}
 
-                    <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)", margin: "0 0 0.5rem" }}>
-                      {p.name}
-                    </h3>
+                      <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.25rem", color: "var(--text)", margin: "0 0 0.5rem" }}>
+                        {p.name}
+                      </h3>
 
-                    <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                      <span style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "2.25rem", color: "var(--primary)" }}>
-                        ₹{p.price}
-                      </span>
-                      <span style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>
-                        / {p.billingCycle}
-                      </span>
-                    </div>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                        <span style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "2.25rem", color: "var(--primary)" }}>
+                          ₹{p.price}
+                        </span>
+                        <span style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>
+                          / {p.billingCycle}
+                        </span>
+                      </div>
 
-                    <p style={{ fontSize: "0.85rem", color: "var(--secondary)", fontWeight: 700, margin: "0 0 1rem" }}>
-                      ₹{perMeal} per meal ({p.mealsIncluded} meals included)
-                    </p>
-
-                    <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", lineHeight: 1.6, flex: 1, margin: "0 0 1.25rem" }}>
-                      {p.description}
-                    </p>
-
-                    <div style={{ background: "var(--surface-alt)", padding: "0.75rem", borderRadius: "8px", marginBottom: "1.25rem", fontSize: "0.78rem" }}>
-                      <p style={{ margin: "0 0 0.25rem", color: "var(--text-muted)" }}>
-                        Your Take-Home (90%): <strong style={{ color: "var(--secondary)" }}>₹{cookTakeHome}</strong>
+                      <p style={{ fontSize: "0.85rem", color: "var(--secondary)", fontWeight: 700, margin: "0 0 1rem" }}>
+                        ₹{perMeal} per meal ({p.mealsIncluded} meals included)
                       </p>
-                      <p style={{ margin: 0, color: "var(--text-muted)" }}>
-                        Max Pause Days: <strong>{p.pauseAllowedDays} days</strong>
-                      </p>
-                    </div>
 
-                    <div style={{ display: "flex", gap: "0.5rem" }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingPlan({ ...p });
-                          setShowEditPlanModal(true);
-                        }}
-                        className="btn btn-outline"
-                        style={{ flex: 1, justifyContent: "center", fontSize: "0.8125rem" }}
-                      >
-                        <Edit2 size={14} /> Edit Plan
-                      </button>
-                      {plans.length > 1 && (
+                      <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", lineHeight: 1.6, flex: 1, margin: "0 0 1.25rem" }}>
+                        {p.description}
+                      </p>
+
+                      <div style={{ background: "var(--surface-alt)", padding: "0.75rem", borderRadius: "8px", marginBottom: "1.25rem", fontSize: "0.78rem" }}>
+                        <p style={{ margin: "0 0 0.25rem", color: "var(--text-muted)" }}>
+                          Your Take-Home (90%): <strong style={{ color: "var(--secondary)" }}>₹{cookTakeHome}</strong>
+                        </p>
+                        <p style={{ margin: 0, color: "var(--text-muted)" }}>
+                          Max Pause Days: <strong>{p.pauseAllowedDays} days</strong>
+                        </p>
+                      </div>
+
+                      <div style={{ display: "flex", gap: "0.5rem" }}>
                         <button
                           type="button"
-                          onClick={() => handleDeletePlan(p.id, p.name)}
-                          className="btn btn-ghost"
-                          style={{ color: "var(--danger)", padding: "0.5rem" }}
-                          title="Delete Plan"
+                          onClick={() => {
+                            setEditingPlan({ ...p });
+                            setShowEditPlanModal(true);
+                          }}
+                          className="btn btn-outline"
+                          style={{ flex: 1, justifyContent: "center", fontSize: "0.8125rem" }}
                         >
-                          <Trash2 size={16} />
+                          <Edit2 size={14} /> Edit Plan
                         </button>
-                      )}
+                        {plans.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePlan(p.id, p.name)}
+                            className="btn btn-ghost"
+                            style={{ color: "var(--danger)", padding: "0.5rem" }}
+                            title="Delete Plan"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
 
             {/* Add Plan Modal */}
@@ -2506,14 +2851,16 @@ export default function CookDashboardPage() {
                     </div>
 
                     <div style={{ marginBottom: "1rem" }}>
-                      <label className="label">Mobile Number *</label>
+                      <label className="label">Mobile Number (10 digits) *</label>
                       <input
-                        type="text"
+                        type="tel"
                         required
+                        maxLength={10}
+                        pattern="[6-9][0-9]{9}"
                         className="input"
-                        placeholder="e.g. +91 98250 12345"
+                        placeholder="10-digit mobile number"
                         value={newSubscriber.phone}
-                        onChange={(e) => setNewSubscriber({ ...newSubscriber, phone: e.target.value })}
+                        onChange={(e) => setNewSubscriber({ ...newSubscriber, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
                       />
                     </div>
 
@@ -2794,25 +3141,38 @@ export default function CookDashboardPage() {
                 </div>
                 <span className="badge badge-success" style={{ fontSize: "0.75rem" }}>✓ 100% on-time settlement</span>
               </div>
-              <EarningsChart />
+              <EarningsChart orders={orders} isDemo={currentUser?.email === "demo@cook.com"} />
             </div>
 
             {/* Bank Card */}
             <div className="card" style={{ padding: "1.75rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
                 <div>
                   <h3 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.125rem", color: "var(--text)", margin: "0 0 0.5rem" }}>
                     Registered Bank Account for Payouts
                   </h3>
-                  <p style={{ fontSize: "0.95rem", color: "var(--text)", margin: 0 }}>
-                    {profile.bankName} • Account: <strong>{profile.bankAccount}</strong>
-                  </p>
-                  <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", margin: "0.25rem 0 0" }}>
-                    IFSC: {profile.bankIfsc} • Holder: {profile.bankHolder || profile.headCook}
-                  </p>
+                  {profile.bankAccount ? (
+                    <>
+                      <p style={{ fontSize: "0.95rem", color: "var(--text)", margin: 0 }}>
+                        {profile.bankName} • Account: <strong>{profile.bankAccount}</strong>
+                      </p>
+                      <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", margin: "0.25rem 0 0" }}>
+                        IFSC: {profile.bankIfsc} • Holder: {profile.bankHolder || profile.headCook}
+                      </p>
+                    </>
+                  ) : (
+                    <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", margin: 0 }}>
+                      ⚠️ No payout bank account linked yet. Please add your settlement bank details to receive weekly direct deposits.
+                    </p>
+                  )}
                 </div>
-                <button onClick={() => setActiveTab("profile")} className="btn btn-outline" style={{ fontSize: "0.8125rem" }}>
-                  Update Bank Details
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("profile")}
+                  className={profile.bankAccount ? "btn btn-outline" : "btn btn-primary"}
+                  style={{ fontSize: "0.8125rem" }}
+                >
+                  {profile.bankAccount ? "Update Bank Details" : "+ Link Bank Account"}
                 </button>
               </div>
             </div>

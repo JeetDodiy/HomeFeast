@@ -66,11 +66,22 @@ export default function CustomerDashboardPage() {
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [cutoffWarning, setCutoffWarning] = useState("");
-  const [currentUser, setCurrentUser] = useState<{ id?: string; name: string; email: string; city: string }>({
-    id: "usr_customer_1",
-    name: "Pooja Patel",
-    email: "demo@customer.com",
+  const [currentUser, setCurrentUser] = useState<{ id?: string; name: string; email: string; city: string; phone?: string; address?: string }>({
+    id: "",
+    name: "Customer",
+    email: "",
     city: "Rajkot",
+    phone: "",
+    address: "",
+  });
+
+  const [profileForm, setProfileForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    address: "",
+    pref: "veg",
+    spice: "medium",
   });
 
   // Complaints and reviews state
@@ -82,6 +93,8 @@ export default function CustomerDashboardPage() {
   const [newReview, setNewReview] = useState({ cook: "Meera's Kitchen", rating: 5, comment: "" });
   const [deleteSuccess, setDeleteSuccess] = useState("");
 
+  const custCleanKey = (currentUser?.email || "").toLowerCase().replace(/[^a-z0-9]/g, "_");
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -90,27 +103,42 @@ export default function CustomerDashboardPage() {
         setActiveTab(tabParam);
       }
 
-      // Check current user
+      // Check current logged in user
       let isDemoAccount = false;
+      let activeUser: any = null;
       try {
         const u = localStorage.getItem("hf_user");
         if (u) {
-          const userObj = JSON.parse(u);
-          if (userObj.name) {
-            isDemoAccount = userObj.email === "demo@customer.com" || userObj.email === "arjun.verma@example.com";
+          activeUser = JSON.parse(u);
+          if (activeUser && (activeUser.name || activeUser.email)) {
+            isDemoAccount = activeUser.email === "demo@customer.com" || activeUser.email === "arjun.verma@example.com";
+            const userPhone = (activeUser.phone || "").replace(/\D/g, "").slice(0, 10);
             setCurrentUser({
-              id: userObj.id || "usr_customer_1",
-              name: userObj.name,
-              email: userObj.email || "customer@homefeast.in",
-              city: userObj.city || "Rajkot",
+              id: activeUser.id || "",
+              name: activeUser.name || "Customer",
+              email: activeUser.email || "",
+              city: activeUser.city || "Rajkot",
+              phone: userPhone,
+              address: activeUser.address || "",
+            });
+            setProfileForm({
+              name: activeUser.name || "Customer",
+              phone: userPhone,
+              email: activeUser.email || "",
+              address: activeUser.address || "",
+              pref: activeUser.dietaryPreference || "veg",
+              spice: activeUser.spicePreference || "medium",
             });
           }
         }
       } catch {}
 
-      // Load customer subscriptions from localStorage and API
+      const userCleanKey = (activeUser?.email || "").toLowerCase().replace(/[^a-z0-9]/g, "_");
+
+      // Load customer subscriptions scoped strictly to this user
       try {
-        const storedSubs = localStorage.getItem("hf_customer_subscriptions");
+        const scopedSubs = userCleanKey ? localStorage.getItem(`hf_customer_subscriptions_${userCleanKey}`) : null;
+        const storedSubs = scopedSubs || (isDemoAccount ? localStorage.getItem("hf_customer_subscriptions") : null);
         if (storedSubs) {
           const parsed = JSON.parse(storedSubs);
           if (Array.isArray(parsed)) {
@@ -125,9 +153,10 @@ export default function CustomerDashboardPage() {
         setSubscriptions([]);
       }
 
-      // Load customer orders from localStorage and API
+      // Load customer orders scoped strictly to this user
       try {
-        const storedOrders = localStorage.getItem("hf_customer_orders");
+        const scopedOrders = userCleanKey ? localStorage.getItem(`hf_customer_orders_${userCleanKey}`) : null;
+        const storedOrders = scopedOrders || (isDemoAccount ? localStorage.getItem("hf_customer_orders") : null);
         if (storedOrders) {
           const parsed = JSON.parse(storedOrders);
           if (Array.isArray(parsed)) {
@@ -142,62 +171,71 @@ export default function CustomerDashboardPage() {
         setOrders([]);
       }
 
-      // Live Backend Query: sync real orders & subscriptions across devices
-      const targetUserId = currentUser?.id || (isDemoAccount ? "usr_customer_1" : "usr_customer_1");
-      fetch(`/api/v1/orders?userId=${encodeURIComponent(targetUserId)}`)
-        .then((res) => res.json())
-        .then((orderData) => {
-          if (orderData.success && Array.isArray(orderData.data) && orderData.data.length > 0) {
-            const formatted = orderData.data.map((o: any) => ({
-              id: o.id,
-              cookName: o.cookName || "HomeFeast Kitchen",
-              date: o.deliveryDate || o.date || new Date().toISOString().split("T")[0],
-              status: o.status || "CONFIRMED",
-              amount: o.totalAmount || o.amount || 120,
-              items: o.items || ["Daily Thali Meal Box"],
-              slot: o.slot || "Lunch (12–1:30 PM)",
-            }));
-            setOrders((prev) => {
-              const prevIds = new Set(prev.map((p) => p.id));
-              const merged = [...prev, ...formatted.filter((f: any) => !prevIds.has(f.id))];
-              if (typeof window !== "undefined") localStorage.setItem("hf_customer_orders", JSON.stringify(merged));
-              return merged;
-            });
-          }
-        })
-        .catch(() => {});
+      // Live Backend Query: only sync real orders & subscriptions if the user has a real registered ID or is demo
+      const targetUserId = activeUser?.id || (isDemoAccount ? "usr_customer_1" : "");
+      if (targetUserId) {
+        fetch(`/api/v1/orders?userId=${encodeURIComponent(targetUserId)}`)
+          .then((res) => res.json())
+          .then((orderData) => {
+            if (orderData.success && Array.isArray(orderData.data) && orderData.data.length > 0) {
+              const formatted = orderData.data.map((o: any) => ({
+                id: o.id,
+                cookName: o.cookName || "HomeFeast Kitchen",
+                date: o.deliveryDate || o.date || new Date().toISOString().split("T")[0],
+                status: o.status || "CONFIRMED",
+                amount: o.totalAmount || o.amount || 120,
+                items: o.items || ["Daily Thali Meal Box"],
+                slot: o.slot || "Lunch (12–1:30 PM)",
+              }));
+              setOrders((prev) => {
+                const prevIds = new Set(prev.map((p) => p.id));
+                const merged = [...prev, ...formatted.filter((f: any) => !prevIds.has(f.id))];
+                if (typeof window !== "undefined") {
+                  if (userCleanKey) localStorage.setItem(`hf_customer_orders_${userCleanKey}`, JSON.stringify(merged));
+                  if (isDemoAccount) localStorage.setItem("hf_customer_orders", JSON.stringify(merged));
+                }
+                return merged;
+              });
+            }
+          })
+          .catch(() => {});
 
-      fetch(`/api/v1/subscriptions?userId=${encodeURIComponent(targetUserId)}`)
-        .then((res) => res.json())
-        .then((subJson) => {
-          if (subJson.success && Array.isArray(subJson.data) && subJson.data.length > 0) {
-            const formattedSubs = subJson.data.map((s: any) => ({
-              id: s.id,
-              cookName: s.cookName || "Meera's Kitchen",
-              cookAvatar: "https://randomuser.me/api/portraits/women/44.jpg",
-              plan: s.planName || s.plan || "Weekly Plan",
-              status: s.status || "ACTIVE",
-              startDate: s.startDate || "2026-10-14",
-              endDate: s.endDate || "2026-10-21",
-              slot: s.slot || "Lunch (12–1:30 PM)",
-              price: s.price || 749,
-              nextDelivery: `Tomorrow, ${s.slot ? (s.slot.includes("Lunch") ? "12:30 PM" : "7:30 PM") : "12:30 PM"}`,
-              remainingMeals: s.remainingMeals ?? s.totalMeals ?? 7,
-              totalMeals: s.totalMeals ?? 7,
-            }));
-            setSubscriptions((prev) => {
-              const prevIds = new Set(prev.map((p) => p.id));
-              const merged = [...prev, ...formattedSubs.filter((f: any) => !prevIds.has(f.id))];
-              if (typeof window !== "undefined") localStorage.setItem("hf_customer_subscriptions", JSON.stringify(merged));
-              return merged;
-            });
-          }
-        })
-        .catch(() => {});
+        fetch(`/api/v1/subscriptions?userId=${encodeURIComponent(targetUserId)}`)
+          .then((res) => res.json())
+          .then((subJson) => {
+            if (subJson.success && Array.isArray(subJson.data) && subJson.data.length > 0) {
+              const formattedSubs = subJson.data.map((s: any) => ({
+                id: s.id,
+                cookName: s.cookName || "Meera's Kitchen",
+                cookAvatar: "https://randomuser.me/api/portraits/women/44.jpg",
+                plan: s.planName || s.plan || "Weekly Plan",
+                status: s.status || "ACTIVE",
+                startDate: s.startDate || "2026-10-14",
+                endDate: s.endDate || "2026-10-21",
+                slot: s.slot || "Lunch (12–1:30 PM)",
+                price: s.price || 749,
+                nextDelivery: `Tomorrow, ${s.slot ? (s.slot.includes("Lunch") ? "12:30 PM" : "7:30 PM") : "12:30 PM"}`,
+                remainingMeals: s.remainingMeals ?? s.totalMeals ?? 7,
+                totalMeals: s.totalMeals ?? 7,
+              }));
+              setSubscriptions((prev) => {
+                const prevIds = new Set(prev.map((p) => p.id));
+                const merged = [...prev, ...formattedSubs.filter((f: any) => !prevIds.has(f.id))];
+                if (typeof window !== "undefined") {
+                  if (userCleanKey) localStorage.setItem(`hf_customer_subscriptions_${userCleanKey}`, JSON.stringify(merged));
+                  if (isDemoAccount) localStorage.setItem("hf_customer_subscriptions", JSON.stringify(merged));
+                }
+                return merged;
+              });
+            }
+          })
+          .catch(() => {});
+      }
 
-      // Load complaints
+      // Load complaints scoped strictly to user
       try {
-        const storedComplaints = localStorage.getItem("hf_customer_complaints");
+        const scopedComp = userCleanKey ? localStorage.getItem(`hf_customer_complaints_${userCleanKey}`) : null;
+        const storedComplaints = scopedComp || (isDemoAccount ? localStorage.getItem("hf_customer_complaints") : null);
         if (storedComplaints) {
           const parsed = JSON.parse(storedComplaints);
           if (Array.isArray(parsed)) setComplaints(parsed);
@@ -208,11 +246,14 @@ export default function CustomerDashboardPage() {
         } else {
           setComplaints([]);
         }
-      } catch {}
+      } catch {
+        setComplaints([]);
+      }
 
-      // Load user reviews
+      // Load user reviews scoped strictly to user
       try {
-        const storedReviews = localStorage.getItem("hf_customer_reviews");
+        const scopedRev = userCleanKey ? localStorage.getItem(`hf_customer_reviews_${userCleanKey}`) : null;
+        const storedReviews = scopedRev || (isDemoAccount ? localStorage.getItem("hf_customer_reviews") : null);
         if (storedReviews) {
           const parsed = JSON.parse(storedReviews);
           if (Array.isArray(parsed)) setUserReviews(parsed);
@@ -223,7 +264,9 @@ export default function CustomerDashboardPage() {
         } else {
           setUserReviews([]);
         }
-      } catch {}
+      } catch {
+        setUserReviews([]);
+      }
     }
   }, []);
 
@@ -270,6 +313,7 @@ export default function CustomerDashboardPage() {
 
       if (typeof window !== "undefined") {
         try {
+          if (custCleanKey) localStorage.setItem(`hf_customer_subscriptions_${custCleanKey}`, JSON.stringify(updated));
           localStorage.setItem("hf_customer_subscriptions", JSON.stringify(updated));
         } catch {}
       }
@@ -307,6 +351,7 @@ export default function CustomerDashboardPage() {
     setComplaints(updated);
     if (typeof window !== "undefined") {
       try {
+        if (custCleanKey) localStorage.setItem(`hf_customer_complaints_${custCleanKey}`, JSON.stringify(updated));
         localStorage.setItem("hf_customer_complaints", JSON.stringify(updated));
       } catch {}
     }
@@ -325,6 +370,7 @@ export default function CustomerDashboardPage() {
     setUserReviews(updated);
     if (typeof window !== "undefined") {
       try {
+        if (custCleanKey) localStorage.setItem(`hf_customer_reviews_${custCleanKey}`, JSON.stringify(updated));
         localStorage.setItem("hf_customer_reviews", JSON.stringify(updated));
       } catch {}
     }
@@ -335,7 +381,7 @@ export default function CustomerDashboardPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         cookId: "c1",
-        customerName: currentUser?.name || "Pooja Patel",
+        customerName: currentUser?.name || "Customer",
         rating: Number(newReview.rating) || 5,
         comment: newReview.comment.trim(),
       }),
@@ -358,11 +404,24 @@ export default function CustomerDashboardPage() {
       <aside className="sidebar" aria-label="Customer navigation">
         <div style={{ marginBottom: "2rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.5rem" }}>
-            <img
-              src="https://randomuser.me/api/portraits/men/22.jpg"
-              alt="User"
-              style={{ width: 48, height: 48, borderRadius: "50%", objectFit: "cover", border: "2px solid var(--primary)" }}
-            />
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, var(--primary), #f5b82e)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "white",
+                fontFamily: "Poppins",
+                fontWeight: 800,
+                fontSize: "1.25rem",
+                flexShrink: 0,
+              }}
+            >
+              {(currentUser.name || "C").trim().charAt(0).toUpperCase()}
+            </div>
             <div>
               <p style={{ fontFamily: "Poppins", fontWeight: 700, color: "var(--text)", fontSize: "0.9375rem", margin: 0 }}>
                 {currentUser.name}
@@ -897,28 +956,58 @@ export default function CustomerDashboardPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
                 <div>
                   <label className="label">Full Name</label>
-                  <input type="text" className="input" defaultValue="Pooja Patel" />
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder="Your Full Name"
+                    value={profileForm.name}
+                    onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                  />
                 </div>
                 <div>
-                  <label className="label">Mobile Number</label>
-                  <input type="tel" className="input" defaultValue="9876543210" />
+                  <label className="label">Mobile Number (10 digits)</label>
+                  <input
+                    type="tel"
+                    maxLength={10}
+                    pattern="[6-9][0-9]{9}"
+                    placeholder="10-digit mobile number"
+                    className="input"
+                    value={profileForm.phone}
+                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+                  />
                 </div>
               </div>
 
               <div style={{ marginBottom: "1rem" }}>
                 <label className="label">Email Address</label>
-                <input type="email" className="input" defaultValue="demo@customer.com" />
+                <input
+                  type="email"
+                  className="input"
+                  placeholder="name@example.com"
+                  value={profileForm.email}
+                  onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                />
               </div>
 
               <div style={{ marginBottom: "1rem" }}>
                 <label className="label">Primary Delivery Address</label>
-                <textarea rows={2} className="input" defaultValue="Flat 402, Radhika Residency, Kalavad Road, Rajkot - 360005" />
+                <textarea
+                  rows={2}
+                  className="input"
+                  placeholder="Flat/House no., building, street, area, city and pincode"
+                  value={profileForm.address}
+                  onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
+                />
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
                 <div>
                   <label className="label">Default Meal Preference</label>
-                  <select className="input" defaultValue="veg">
+                  <select
+                    className="input"
+                    value={profileForm.pref}
+                    onChange={(e) => setProfileForm({ ...profileForm, pref: e.target.value })}
+                  >
                     <option value="veg">Pure Vegetarian</option>
                     <option value="jain">Jain (No Root Veg)</option>
                     <option value="nonveg">Veg & Non-Veg</option>
@@ -926,7 +1015,11 @@ export default function CustomerDashboardPage() {
                 </div>
                 <div>
                   <label className="label">Spice Tolerance</label>
-                  <select className="input" defaultValue="medium">
+                  <select
+                    className="input"
+                    value={profileForm.spice}
+                    onChange={(e) => setProfileForm({ ...profileForm, spice: e.target.value })}
+                  >
                     <option value="mild">Mild (Low spice)</option>
                     <option value="medium">Medium Home-style</option>
                     <option value="spicy">Spicy Kathiyawadi</option>
@@ -934,7 +1027,43 @@ export default function CustomerDashboardPage() {
                 </div>
               </div>
 
-              <button type="button" onClick={() => alert("Profile updated successfully!")} className="btn btn-primary">
+              <button
+                type="button"
+                onClick={() => {
+                  if (profileForm.phone && profileForm.phone.length !== 10) {
+                    alert("Please enter a valid 10-digit mobile number.");
+                    return;
+                  }
+                  try {
+                    const u = localStorage.getItem("hf_user");
+                    const current = u ? JSON.parse(u) : {};
+                    const updated = {
+                      ...current,
+                      name: profileForm.name,
+                      phone: profileForm.phone,
+                      email: profileForm.email,
+                      address: profileForm.address,
+                      dietaryPreference: profileForm.pref,
+                      spicePreference: profileForm.spice,
+                    };
+                    localStorage.setItem("hf_user", JSON.stringify(updated));
+                    if (custCleanKey) {
+                      localStorage.setItem(`hf_customer_profile_${custCleanKey}`, JSON.stringify(profileForm));
+                    }
+                    setCurrentUser((prev) => ({
+                      ...prev,
+                      name: profileForm.name,
+                      email: profileForm.email,
+                      phone: profileForm.phone,
+                      address: profileForm.address,
+                    }));
+                    alert("Profile and delivery preferences updated successfully!");
+                  } catch {
+                    alert("Profile updated successfully!");
+                  }
+                }}
+                className="btn btn-primary"
+              >
                 Save Preferences
               </button>
             </div>

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "db:start": "node scripts/start-postgres.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

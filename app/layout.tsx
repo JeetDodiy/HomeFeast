@@ -8,6 +8,7 @@ import WhatsAppButton from "@/components/WhatsAppButton";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/Toaster";
+import SplashScreen from "@/components/SplashScreen";
 
 export const viewport: Viewport = {
   themeColor: "#E8650A",
@@ -22,6 +23,16 @@ export const metadata: Metadata = {
   keywords:
     "homemade food, tiffin service, home cook, meal subscription, daily tiffin, Rajkot tiffin, Ahmedabad tiffin, Kathiyawadi thali, hygienic food",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/logo-icon.png", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icon-192.png" },
+    ],
+    shortcut: ["/favicon.ico"],
+  },
   metadataBase: new URL("https://homefeast.in"),
   alternates: {
     canonical: "/",
@@ -87,6 +98,7 @@ export default function RootLayout({
           Skip to main content
         </a>
         <ThemeProvider>
+          <SplashScreen />
           <Navbar />
           <main id="main-content">{children}</main>
           <Footer />

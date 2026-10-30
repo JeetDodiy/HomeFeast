@@ -41,7 +41,9 @@ export function generateOrderConfirmationEmail(params: {
     <body>
       <div class="card">
         <div class="header">
-          <div class="logo">🍱 HomeFeast</div>
+          <div class="logo">
+            <img src="https://homefeast.in/HomeFeast%20Fresh%20Delivery%20Logo.png" alt="HomeFeast" style="height: 52px; max-width: 100%; display: inline-block; margin-bottom: 8px;" />
+          </div>
           <h2>Order Confirmed!</h2>
           <span class="badge">Order ID: ${params.orderId}</span>
         </div>
@@ -96,7 +98,10 @@ export function generateSubscriptionStatusEmail(params: {
     </head>
     <body>
       <div class="card">
-        <h2 style="color: #E8650A;">🍱 HomeFeast Update</h2>
+        <div style="text-align: center; margin-bottom: 16px;">
+          <img src="https://homefeast.in/HomeFeast%20Fresh%20Delivery%20Logo.png" alt="HomeFeast" style="height: 48px; max-width: 100%; display: inline-block;" />
+          <h2 style="color: #E8650A; margin: 8px 0 0 0;">Subscription Update</h2>
+        </div>
         <p>Hi ${params.userName},</p>
         <p>Your subscription request (ID: <strong>${params.subscriptionId}</strong>) with <strong>${params.cookName}</strong> has been updated:</p>
         <p style="font-size: 18px;"><span class="badge">${params.status}</span></p>

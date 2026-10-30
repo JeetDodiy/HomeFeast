@@ -63,16 +63,18 @@ function SearchContent() {
         const stored = localStorage.getItem("hf_registered_cooks");
         if (stored) {
           const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) localCooks.push(...parsed);
+          if (Array.isArray(parsed)) {
+            localCooks.push(...parsed.filter((c: any) => (c.status || "approved").toLowerCase() === "approved"));
+          }
         }
       } catch {}
 
-      // 2. From hf_cook_profile (if user registered their kitchen)
+      // 2. From hf_cook_profile (if user registered their kitchen and it is approved)
       try {
         const activeProfile = localStorage.getItem("hf_cook_profile");
         if (activeProfile) {
           const p = JSON.parse(activeProfile);
-          if (p.shopName && !localCooks.some((c) => c.kitchenName?.toLowerCase() === p.shopName.toLowerCase())) {
+          if (p.shopName && p.status === "approved" && !localCooks.some((c) => c.kitchenName?.toLowerCase() === p.shopName.toLowerCase())) {
             const cookId = `c_${(p.headCook || "cook").toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
             localCooks.push({
               id: cookId,
@@ -90,7 +92,8 @@ function SearchContent() {
               totalReviews: 12,
               deliverySlots: [p.lunchSlot || "Lunch (12–1:30 PM)", p.dinnerSlot || "Dinner (7:30–9 PM)"],
               serviceAreas: p.serviceAreas || ["Kalavad Road", "University Road", "150 Feet Ring Road"],
-              status: "approved",
+              status: p.status || "approved",
+              isOpen: p.status === "approved",
               isVeg: p.pureVeg !== undefined ? p.pureVeg : true,
               totalOrders: 65,
               responseTime: "Under 25 min",
@@ -134,8 +137,11 @@ function SearchContent() {
     }
   }, []);
 
-  // Filter cooks based on user criteria
+  // Filter cooks based on user criteria (only approved kitchens are live)
   const filtered = allCooks.filter((c) => {
+    // Only approved cooks are visible publicly to customers
+    if ((c.status || "approved").toLowerCase() !== "approved") return false;
+
     if (selectedCity) {
       const qCity = selectedCity.trim().toLowerCase();
       const matchedCity = CITIES.find((x) => x.id.toLowerCase() === qCity || x.name.toLowerCase() === qCity);

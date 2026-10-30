@@ -20,7 +20,13 @@ export default function NotFoundPage() {
         background: "var(--bg)",
       }}
     >
-      <div style={{ fontSize: "7rem", marginBottom: "1rem", lineHeight: 1 }}>🍱</div>
+      <Link href="/" style={{ marginBottom: "1.5rem", display: "inline-block" }}>
+        <img
+          src="/logo-icon.png"
+          alt="HomeFeast"
+          style={{ width: 80, height: 80, objectFit: "contain", margin: "0 auto" }}
+        />
+      </Link>
       <h1
         style={{
           fontFamily: "Poppins, sans-serif",

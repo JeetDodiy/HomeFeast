@@ -26,6 +26,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTheme(next);
     document.documentElement.setAttribute("data-theme", next);
     localStorage.setItem("homefeast-theme", next);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("homefeast-trigger-splash", { detail: { theme: next } }));
+    }
   };
 
   return (

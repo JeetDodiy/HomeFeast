@@ -1,8 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, ChefHat, Mail, Lock, User, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, ChefHat, Mail, Lock, User, ArrowRight, LogOut, CheckCircle } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,6 +11,28 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"customer" | "cook" | "admin">("cook");
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const u = localStorage.getItem("hf_user");
+        if (u) setCurrentUser(JSON.parse(u));
+      } catch {}
+    }
+  }, []);
+
+  const handleSignOut = () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("hf_token");
+      localStorage.removeItem("hf_user");
+      document.cookie = "hf_token=; path=/; max-age=0";
+      document.cookie = "hf_role=; path=/; max-age=0";
+      window.dispatchEvent(new Event("auth-state-changed"));
+      setCurrentUser(null);
+      setForm({ email: "", password: "" });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,13 +110,12 @@ export default function LoginPage() {
       <div style={{ width: "100%", maxWidth: 460 }}>
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", textDecoration: "none" }}>
-            <div style={{ width: 48, height: 48, borderRadius: "12px", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
-              <ChefHat size={26} />
-            </div>
-            <span style={{ fontFamily: "Poppins", fontWeight: 800, fontSize: "1.5rem", color: "var(--text)" }}>
-              Home<span style={{ color: "var(--primary)" }}>Feast</span>
-            </span>
+          <Link href="/" style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", textDecoration: "none" }}>
+            <img
+              src="/HomeFeast Fresh Delivery Logo.png"
+              alt="HomeFeast Fresh Delivery Logo"
+              style={{ width: 150, height: "auto", objectFit: "contain", display: "block" }}
+            />
           </Link>
           <h1 style={{ fontFamily: "Poppins", fontWeight: 700, fontSize: "1.75rem", color: "var(--text)", marginTop: "1.5rem", marginBottom: "0.5rem" }}>
             Welcome back! 👋
@@ -143,6 +164,55 @@ export default function LoginPage() {
 
         {/* Login Card */}
         <div className="card" style={{ padding: "2rem" }}>
+          {currentUser && (
+            <div
+              style={{
+                padding: "0.875rem 1rem",
+                background: "rgba(47, 125, 79, 0.08)",
+                border: "1.5px solid var(--secondary)",
+                borderRadius: "var(--radius-sm)",
+                marginBottom: "1.25rem",
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.5rem",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: "0.85rem", color: "var(--text)", fontWeight: 600 }}>
+                  Active Session Detected:
+                </span>
+                <span className="badge badge-success" style={{ fontSize: "0.7rem", padding: "0.2rem 0.5rem" }}>
+                  Currently Logged In
+                </span>
+              </div>
+              <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--text-muted)" }}>
+                You are currently signed in as <strong>{currentUser.name}</strong> ({currentUser.email || currentUser.role}).
+              </p>
+              <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.25rem" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const role = (currentUser.role || "").toLowerCase();
+                    const target = role === "cook" ? "/cook/dashboard" : role === "admin" ? "/admin/dashboard" : "/customer/dashboard";
+                    router.push(target);
+                  }}
+                  className="btn btn-secondary"
+                  style={{ flex: 1, padding: "0.45rem", fontSize: "0.8125rem", justifyContent: "center" }}
+                >
+                  Go to Dashboard →
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="btn btn-ghost"
+                  style={{ padding: "0.45rem 0.75rem", fontSize: "0.8125rem", color: "var(--danger)" }}
+                >
+                  <LogOut size={14} /> Sign Out / Switch
+                </button>
+              </div>
+            </div>
+          )}
+
           {error && (
             <div
               style={{
@@ -273,7 +343,7 @@ export default function LoginPage() {
                   alignItems: "center",
                 }}
               >
-                <span><strong>🧑 Customer:</strong> demo@customer.com</span>
+                <span><strong>🧑 Customer (Pooja Patel):</strong> demo@customer.com</span>
                 <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>password: demo123</span>
               </button>
               <button
@@ -293,7 +363,7 @@ export default function LoginPage() {
                   alignItems: "center",
                 }}
               >
-                <span><strong>👨‍🍳 Cook:</strong> demo@cook.com</span>
+                <span><strong>👨‍🍳 Cook (Meenaben Patel):</strong> demo@cook.com</span>
                 <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>password: demo123</span>
               </button>
               <button
@@ -313,7 +383,7 @@ export default function LoginPage() {
                   alignItems: "center",
                 }}
               >
-                <span><strong>🔐 Admin:</strong> admin@homefeast.in</span>
+                <span><strong>🔐 Admin (Jeet Dodiya):</strong> admin@homefeast.in</span>
                 <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>password: admin123</span>
               </button>
             </div>

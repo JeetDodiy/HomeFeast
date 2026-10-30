@@ -15,7 +15,7 @@ const COMPLAINTS = [
   {
     id: "comp-2",
     orderId: "HF-ORD-7419",
-    customerName: "Anjali Gupta",
+    customerName: "Anjali Dave",
     cookName: "Priya's Home Kitchen",
     subject: "Missing Sambar in South Indian Tiffin",
     details: "The tiffin contained idlis and chutney, but the sambar container was omitted.",

@@ -695,8 +695,8 @@ export default function HomePage() {
             {/* Left Content */}
             <div>
               <div className="section-tag animate-fadeInUp" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
-                <Flame size={15} style={{ color: "var(--primary)" }} />
-                <span>India's #1 Homemade Cook & Tiffin Platform</span>
+                <img src="/logo-icon.png" alt="HomeFeast" style={{ width: 20, height: 20, objectFit: "contain" }} />
+                <span>HomeFeast · Fresh Homemade Meals Delivered Daily</span>
               </div>
 
               <h1

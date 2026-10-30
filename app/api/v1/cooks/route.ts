@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { COOKS, DEFAULT_WEEKLY_MENU } from "@/lib/mockData";
 
@@ -9,6 +10,7 @@ export async function GET(request: Request) {
   const cuisine = searchParams.get("cuisine");
   const query = searchParams.get("q")?.toLowerCase();
   const sort = searchParams.get("sort");
+  const statusParam = searchParams.get("status")?.toLowerCase();
 
   try {
     const cooks = await prisma.cook.findMany({
@@ -41,7 +43,7 @@ export async function GET(request: Request) {
         serviceAreas: c.serviceAreas,
         deliverySlots: c.deliverySlots,
         isVeg: c.isVeg,
-        status: c.status.toLowerCase(),
+        status: (c.status || "PENDING").toLowerCase(),
         rating: c.ratingAvg,
         totalReviews: c.totalReviews,
         totalOrders: c.totalOrders,
@@ -77,6 +79,14 @@ export async function GET(request: Request) {
       deduplicatedCooks.push(c);
     }
     formatted = deduplicatedCooks;
+
+    // Filter by approval status
+    if (statusParam && statusParam !== "all") {
+      formatted = formatted.filter((c) => c.status === statusParam);
+    } else if (!statusParam) {
+      // Public default: only return approved cooks to customers
+      formatted = formatted.filter((c) => c.status === "approved");
+    }
 
     if (city) {
       formatted = formatted.filter((c) => c.city?.toLowerCase() === city);
@@ -114,8 +124,23 @@ export async function GET(request: Request) {
       data: formatted,
     });
   } catch (error) {
-    console.error("Cooks API error:", error);
-    return NextResponse.json({ version: "v1", success: false, error: "Database service error" }, { status: 500 });
+    console.warn("Database connection issue, providing fallback cook catalog:", error);
+    let fallbackCooks = COOKS;
+    if (city) {
+      fallbackCooks = fallbackCooks.filter((c) => c.city?.toLowerCase() === city);
+    }
+    if (mealType === "veg") {
+      fallbackCooks = fallbackCooks.filter((c) => c.isVeg);
+    } else if (mealType === "nonveg") {
+      fallbackCooks = fallbackCooks.filter((c) => !c.isVeg);
+    }
+    return NextResponse.json({
+      version: "v1",
+      success: true,
+      total: fallbackCooks.length,
+      data: fallbackCooks,
+      fallback: true,
+    });
   }
 }
 
@@ -124,21 +149,26 @@ export async function POST(request: Request) {
     const body = await request.json();
     const cookName = (body.name || body.kitchenName || "New Kitchen").trim();
     const cookId = body.id || `c_${Date.now()}`;
+    const rawStatus = (body.status || "PENDING").toUpperCase();
+    const initialStatus = ["PENDING", "APPROVED", "REJECTED"].includes(rawStatus) ? rawStatus : "PENDING";
 
     // 1. Ensure user exists in PostgreSQL
     let userId = body.userId;
     if (!userId) {
       const email = body.email || `cook_${Date.now()}@homefeast.cook`;
+      const passwordHash = body.password
+        ? bcrypt.hashSync(body.password, 10)
+        : "$2b$10$XbxYIRf/hOrULM9QPwEge.nsKPSZPLCFzYys5BWwVVzCOyDYj3KB."; // demo123 fallback
       const user = await prisma.user.upsert({
         where: { email },
-        update: {},
+        update: body.password ? { passwordHash } : {},
         create: {
           name: cookName,
           email,
           phone: body.phone || `98${Math.floor(10000000 + Math.random() * 90000000)}`,
-          passwordHash: "$2b$10$XbxYIRf/hOrULM9QPwEge.nsKPSZPLCFzYys5BWwVVzCOyDYj3KB.", // demo123
+          passwordHash,
           role: "COOK",
-          isVerified: true,
+          isVerified: initialStatus === "APPROVED",
         },
       });
       userId = user.id;
@@ -164,6 +194,7 @@ export async function POST(request: Request) {
         serviceAreas: body.serviceAreas || ["City Center"],
         deliverySlots: body.deliverySlots || ["Lunch (12–1:30 PM)"],
         isVeg: body.isVeg !== undefined ? body.isVeg : true,
+        status: initialStatus as any,
       },
       create: {
         userId,
@@ -176,7 +207,7 @@ export async function POST(request: Request) {
         serviceAreas: body.serviceAreas || ["City Center"],
         deliverySlots: body.deliverySlots || ["Lunch (12–1:30 PM)"],
         isVeg: body.isVeg !== undefined ? body.isVeg : true,
-        status: "APPROVED",
+        status: initialStatus as any,
         ratingAvg: 5.0,
         totalReviews: 0,
         totalOrders: 0,
@@ -254,3 +285,55 @@ export async function POST(request: Request) {
     return NextResponse.json({ version: "v1", success: false, error: "Failed to register cook in database" }, { status: 400 });
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, status, isVerified } = body;
+    if (!id) {
+      return NextResponse.json({ version: "v1", success: false, error: "Cook ID is required" }, { status: 400 });
+    }
+
+    const newStatus = (status || "").toUpperCase();
+    const validStatus = ["PENDING", "APPROVED", "REJECTED"].includes(newStatus) ? newStatus : undefined;
+
+    // Find cook by ID or userId
+    const cook = await prisma.cook.findFirst({
+      where: {
+        OR: [{ id }, { userId: id }],
+      },
+      include: { user: true },
+    });
+
+    if (!cook) {
+      return NextResponse.json({ version: "v1", success: false, error: "Cook not found" }, { status: 404 });
+    }
+
+    const updated = await prisma.cook.update({
+      where: { id: cook.id },
+      data: {
+        ...(validStatus ? { status: validStatus as any } : {}),
+      },
+    });
+
+    if (cook.userId && (validStatus === "APPROVED" || isVerified !== undefined)) {
+      await prisma.user.update({
+        where: { id: cook.userId },
+        data: {
+          isVerified: validStatus === "APPROVED" ? true : isVerified !== undefined ? Boolean(isVerified) : undefined,
+        },
+      });
+    }
+
+    return NextResponse.json({
+      version: "v1",
+      success: true,
+      message: `Cook ${cook.kitchenName} status updated to ${updated.status}`,
+      data: updated,
+    });
+  } catch (error) {
+    console.error("Cook PATCH error:", error);
+    return NextResponse.json({ version: "v1", success: false, error: "Failed to update cook status" }, { status: 500 });
+  }
+}
+

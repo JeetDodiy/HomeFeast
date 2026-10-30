@@ -70,20 +70,16 @@ export default function Footer() {
                 marginBottom: "1rem",
               }}
             >
-              <div
+              <img
+                src="/logo-icon.png"
+                alt="HomeFeast Logo"
                 style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: "10px",
-                  background: "var(--primary)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "white",
+                  width: 42,
+                  height: 42,
+                  objectFit: "contain",
+                  display: "block",
                 }}
-              >
-                <ChefHat size={22} />
-              </div>
+              />
               <span
                 style={{
                   fontFamily: "Poppins, sans-serif",

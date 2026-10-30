@@ -377,7 +377,7 @@ export default function ContactPage() {
                           onChange={(e) =>
                             setForm({ ...form, name: e.target.value })
                           }
-                          placeholder="John Doe"
+                          placeholder="e.g. Jignesh Patel"
                           className="input-base"
                           required
                         />

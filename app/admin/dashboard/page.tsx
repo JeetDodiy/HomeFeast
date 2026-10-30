@@ -12,20 +12,20 @@ import AdminKpiChart from "@/components/AdminKpiChart";
 const INITIAL_PENDING_COOKS = [
   { id: "pc1", name: "Suresh Bhai's Kitchen", owner: "Suresh Patel", city: "Rajkot", submittedAt: "2024-10-13", fssai: "10020042004991", docs: 3, cuisine: "Gujarati & Kathiyawadi", capacity: "40 meals/day" },
   { id: "pc2", name: "Mamta Didi's Tiffin", owner: "Mamta Joshi", city: "Ahmedabad", submittedAt: "2024-10-12", fssai: "10020042005112", docs: 2, cuisine: "North Indian & Jain", capacity: "25 meals/day" },
-  { id: "pc3", name: "Gopal Bhai Kitchen", owner: "Gopal Sharma", city: "Rajkot", submittedAt: "2024-10-11", fssai: "Pending Verification", docs: 1, cuisine: "Punjabi", capacity: "30 meals/day" },
+  { id: "pc3", name: "Gopal Bhai Kitchen", owner: "Gopalbhai Dave", city: "Rajkot", submittedAt: "2024-10-11", fssai: "Pending Verification", docs: 1, cuisine: "Punjabi", capacity: "30 meals/day" },
 ];
 
 const INITIAL_COMPLAINTS = [
   { id: "cp1", user: "Rahul M.", cook: "Meera's Kitchen", issue: "Delivery was 35 mins late on Tuesday.", status: "open", date: "2024-10-11", priority: "Medium" },
-  { id: "cp2", user: "Anita S.", cook: "Priya's Home Kitchen", issue: "Spicy level was higher than requested.", status: "in_review", date: "2024-10-10", priority: "Low" },
+  { id: "cp2", user: "Anitaben S.", cook: "Priya's Home Kitchen", issue: "Spicy level was higher than requested.", status: "in_review", date: "2024-10-10", priority: "Low" },
   { id: "cp3", user: "Vikram K.", cook: "Jain Bhavan Tiffin", issue: "Salad was missing from lunch pack.", status: "resolved", date: "2024-10-08", priority: "Low" },
 ];
 
 const MOCK_USERS_LIST = [
-  { id: "u1", name: "Arjun Verma", role: "Customer", email: "arjun.v@gmail.com", city: "Rajkot", status: "Active", joined: "Jan 2024", subs: 2 },
+  { id: "u1", name: "Bhavin Vaghani", role: "Customer", email: "bhavin.v@gmail.com", city: "Rajkot", status: "Active", joined: "Jan 2024", subs: 2 },
   { id: "u2", name: "Meera Patel", role: "Cook", email: "meera.patel@gmail.com", city: "Rajkot", status: "Active", joined: "Nov 2023", subs: 23 },
   { id: "u3", name: "Priya Shah", role: "Cook", email: "priya.shah@gmail.com", city: "Rajkot", status: "Active", joined: "Feb 2024", subs: 18 },
-  { id: "u4", name: "Kavya Reddy", role: "Customer", email: "kavya.r@gmail.com", city: "Ahmedabad", status: "Active", joined: "Mar 2024", subs: 1 },
+  { id: "u4", name: "Kavya Joshi", role: "Customer", email: "kavya.j@gmail.com", city: "Ahmedabad", status: "Active", joined: "Mar 2024", subs: 1 },
   { id: "u5", name: "Suresh Patel", role: "Cook (Applicant)", email: "suresh.b@gmail.com", city: "Rajkot", status: "Pending", joined: "Oct 2024", subs: 0 },
 ];
 
@@ -48,13 +48,75 @@ const ADMIN_SIDEBAR = [
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState("overview");
-  const [pendingCooks, setPendingCooks] = useState(INITIAL_PENDING_COOKS);
+  const [pendingCooks, setPendingCooks] = useState<any[]>(INITIAL_PENDING_COOKS);
   const [complaints, setComplaints] = useState(INITIAL_COMPLAINTS);
   const [approving, setApproving] = useState<string | null>(null);
+  const [adminToast, setAdminToast] = useState("");
+
+  const showToast = (msg: string) => {
+    setAdminToast(msg);
+    setTimeout(() => setAdminToast(""), 4500);
+  };
 
   const [mounted, setMounted] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+
+  const fetchPendingCooks = () => {
+    // 1. Live backend query from PostgreSQL
+    fetch("/api/v1/cooks?status=pending")
+      .then((res) => res.json())
+      .then((data) => {
+        let backendPending: any[] = [];
+        if (data.success && Array.isArray(data.data)) {
+          backendPending = data.data.map((c: any) => ({
+            id: c.id,
+            name: c.kitchenName,
+            owner: c.name || "Home Cook",
+            city: c.city || "Rajkot",
+            submittedAt: "Recent",
+            fssai: c.fssaiNo || "Pending Verification",
+            docs: 3,
+            cuisine: Array.isArray(c.cuisines) ? c.cuisines.join(", ") : "Gujarati",
+            capacity: "30-50 meals/day",
+            isRealBackend: true,
+          }));
+        }
+
+        // 2. Read local registrations
+        let localPending: any[] = [];
+        try {
+          const registered = JSON.parse(localStorage.getItem("hf_registered_cooks") || "[]");
+          localPending = registered
+            .filter((c: any) => (c.status || "").toLowerCase() === "pending")
+            .map((c: any) => ({
+              id: c.id,
+              name: c.kitchenName,
+              owner: c.name || "Home Cook",
+              city: c.city || "Rajkot",
+              submittedAt: "Recent",
+              fssai: c.fssaiNo || "Pending Verification",
+              docs: 2,
+              cuisine: Array.isArray(c.cuisines) ? c.cuisines.join(", ") : "Kathiyawadi",
+              capacity: "25-50 meals/day",
+            }));
+        } catch {}
+
+        // Combine and deduplicate
+        const combined = [...backendPending, ...localPending, ...INITIAL_PENDING_COOKS];
+        const seenNames = new Set<string>();
+        const uniquePending: any[] = [];
+        for (const item of combined) {
+          const norm = (item.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          if (norm && !seenNames.has(norm)) {
+            seenNames.add(norm);
+            uniquePending.push(item);
+          }
+        }
+        setPendingCooks(uniquePending);
+      })
+      .catch(() => {});
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -71,19 +133,80 @@ export default function AdminDashboardPage() {
         console.error("Auth check failed:", err);
       }
       setAuthChecked(true);
+      fetchPendingCooks();
     }
   }, []);
 
-  const handleApproveCook = (id: string) => {
+  const handleApproveCook = async (id: string, cookName?: string) => {
     setApproving(id);
-    setTimeout(() => {
+    const targetName = cookName || pendingCooks.find((c) => c.id === id)?.name || "Kitchen";
+
+    try {
+      // 1. Call PATCH /api/v1/cooks to update PostgreSQL
+      await fetch("/api/v1/cooks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: "APPROVED", isVerified: true }),
+      });
+
+      // 2. Update localStorage registered cooks and profile
+      if (typeof window !== "undefined") {
+        try {
+          const registered = JSON.parse(localStorage.getItem("hf_registered_cooks") || "[]");
+          const updated = registered.map((c: any) => {
+            if (c.id === id || c.kitchenName?.toLowerCase() === targetName.toLowerCase()) {
+              return { ...c, status: "approved", isOpen: true };
+            }
+            return c;
+          });
+          localStorage.setItem("hf_registered_cooks", JSON.stringify(updated));
+
+          const currentProfileStr = localStorage.getItem("hf_cook_profile");
+          if (currentProfileStr) {
+            const p = JSON.parse(currentProfileStr);
+            if (p.shopName?.toLowerCase() === targetName.toLowerCase()) {
+              p.status = "approved";
+              p.isOpen = true;
+              p.fssaiVerified = true;
+              localStorage.setItem("hf_cook_profile", JSON.stringify(p));
+            }
+          }
+          window.dispatchEvent(new Event("storage"));
+        } catch {}
+      }
+
       setPendingCooks((prev) => prev.filter((c) => c.id !== id));
+      showToast(`✅ "${targetName}" has been APPROVED and is now LIVE on HomeFeast!`);
+    } catch (e) {
+      console.error("Approval error:", e);
+    } finally {
       setApproving(null);
-    }, 600);
+    }
   };
 
-  const handleRejectCook = (id: string) => {
-    setPendingCooks((prev) => prev.filter((c) => c.id !== id));
+  const handleRejectCook = async (id: string, cookName?: string) => {
+    const targetName = cookName || pendingCooks.find((c) => c.id === id)?.name || "Kitchen";
+    try {
+      await fetch("/api/v1/cooks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: "REJECTED" }),
+      });
+      if (typeof window !== "undefined") {
+        try {
+          const registered = JSON.parse(localStorage.getItem("hf_registered_cooks") || "[]");
+          const updated = registered.map((c: any) => {
+            if (c.id === id || c.kitchenName?.toLowerCase() === targetName.toLowerCase()) {
+              return { ...c, status: "rejected", isOpen: false };
+            }
+            return c;
+          });
+          localStorage.setItem("hf_registered_cooks", JSON.stringify(updated));
+        } catch {}
+      }
+      setPendingCooks((prev) => prev.filter((c) => c.id !== id));
+      showToast(`Application for "${targetName}" has been rejected.`);
+    } catch {}
   };
 
   const handleResolveComplaint = (id: string) => {
@@ -122,13 +245,15 @@ export default function AdminDashboardPage() {
       {/* Admin Sidebar */}
       <aside className="sidebar" aria-label="Admin navigation">
         <div style={{ marginBottom: "2rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.5rem" }}>
-            <div style={{ width: 40, height: 40, borderRadius: "10px", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontFamily: "Poppins", fontWeight: 800 }}>
-              A
-            </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.5rem" }}>
+            <img
+              src="/logo-icon.png"
+              alt="HomeFeast Admin"
+              style={{ width: 40, height: 40, objectFit: "contain", display: "block" }}
+            />
             <div>
-              <p style={{ fontFamily: "Poppins", fontWeight: 700, color: "var(--text)", margin: 0, fontSize: "0.9375rem" }}>Super Admin</p>
-              <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: 0 }}>admin@homefeast.in</p>
+              <p style={{ fontFamily: "Poppins", fontWeight: 700, color: "var(--text)", margin: 0, fontSize: "0.9375rem" }}>HomeFeast Admin</p>
+              <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: 0 }}>Jeet Dodiya • admin@homefeast.in</p>
             </div>
           </div>
         </div>
@@ -162,6 +287,27 @@ export default function AdminDashboardPage() {
 
       {/* Main Content Area */}
       <main style={{ flex: 1, padding: "2rem", overflow: "auto" }}>
+        {adminToast && (
+          <div
+            style={{
+              padding: "0.875rem 1.25rem",
+              background: "rgba(47, 125, 79, 0.12)",
+              border: "1.5px solid var(--secondary)",
+              borderRadius: "8px",
+              color: "var(--secondary)",
+              fontWeight: 600,
+              fontSize: "0.9375rem",
+              marginBottom: "1.5rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+            }}
+          >
+            <CheckCircle size={18} />
+            <span>{adminToast}</span>
+          </div>
+        )}
+
         {/* TAB 1: OVERVIEW */}
         {activeTab === "overview" && (
           <div>

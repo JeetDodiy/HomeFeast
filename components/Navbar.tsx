@@ -134,20 +134,16 @@ export default function Navbar() {
           }}
           aria-label="HomeFeast Home"
         >
-          <div
+          <img
+            src="/logo-icon.png"
+            alt="HomeFeast Logo"
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: "10px",
-              background: "var(--primary)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
+              width: 44,
+              height: 44,
+              objectFit: "contain",
+              display: "block",
             }}
-          >
-            <ChefHat size={22} />
-          </div>
+          />
           <span
             style={{
               fontFamily: "Poppins, sans-serif",

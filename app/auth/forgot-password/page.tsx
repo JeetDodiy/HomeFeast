@@ -43,35 +43,16 @@ export default function ForgotPasswordPage() {
             href="/"
             style={{
               display: "inline-flex",
+              flexDirection: "column",
               alignItems: "center",
-              gap: "0.5rem",
               textDecoration: "none",
             }}
           >
-            <div
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: "12px",
-                background: "var(--primary)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-              }}
-            >
-              <ChefHat size={26} />
-            </div>
-            <span
-              style={{
-                fontFamily: "Poppins",
-                fontWeight: 800,
-                fontSize: "1.5rem",
-                color: "var(--text)",
-              }}
-            >
-              Home<span style={{ color: "var(--primary)" }}>Feast</span>
-            </span>
+            <img
+              src="/HomeFeast Fresh Delivery Logo.png"
+              alt="HomeFeast Fresh Delivery Logo"
+              style={{ width: 150, height: "auto", objectFit: "contain", display: "block" }}
+            />
           </Link>
         </div>
 

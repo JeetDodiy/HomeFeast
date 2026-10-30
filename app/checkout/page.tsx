@@ -32,13 +32,13 @@ function CheckoutContent() {
 
   // Form State
   const [formData, setFormData] = useState({
-    fullName: "Priya Sharma",
+    fullName: "Pooja Patel",
     phone: "9876543210",
-    email: "priya.sharma@example.com",
-    address: "Flat 402, Royal Residency, Opp. Reliance Mall",
-    area: "Race Course",
+    email: "pooja.patel@example.com",
+    address: "Flat 402, Radhika Residency, Kalavad Road",
+    area: "Kalavad Road",
     city: cook?.city || "Rajkot",
-    pincode: "360001",
+    pincode: "360005",
     landmark: "Near Reliance Mall",
     mealSlot: "Lunch (12:00 PM – 1:30 PM)",
     deliveryDays: "all-7-days",
@@ -196,6 +196,9 @@ function CheckoutContent() {
     // Sync to localStorage for cook dashboard & customer dashboard
     if (typeof window !== "undefined") {
       try {
+        const u = JSON.parse(localStorage.getItem("hf_user") || "{}");
+        const userCleanKey = (u.email || "").toLowerCase().replace(/[^a-z0-9]/g, "_");
+
         // Cook Orders
         const existingCookOrders = JSON.parse(localStorage.getItem("hf_cook_orders") || "[]");
         const newCookOrder = {
@@ -211,6 +214,12 @@ function CheckoutContent() {
           packedItems: { sabzi: false, rotis: false, dal: false, rice: false },
         };
         localStorage.setItem("hf_cook_orders", JSON.stringify([newCookOrder, ...existingCookOrders]));
+
+        const cookCleanKey = (cook.email || "").toLowerCase().replace(/[^a-z0-9]/g, "_");
+        if (cookCleanKey) {
+          const scopedCookOrders = JSON.parse(localStorage.getItem(`hf_cook_orders_${cookCleanKey}`) || "[]");
+          localStorage.setItem(`hf_cook_orders_${cookCleanKey}`, JSON.stringify([newCookOrder, ...scopedCookOrders]));
+        }
 
         // Cook Subscribers
         const existingCookSubs = JSON.parse(localStorage.getItem("hf_cook_subscribers") || "[]");
@@ -230,6 +239,11 @@ function CheckoutContent() {
         };
         localStorage.setItem("hf_cook_subscribers", JSON.stringify([newCookSub, ...existingCookSubs]));
 
+        if (cookCleanKey) {
+          const scopedCookSubs = JSON.parse(localStorage.getItem(`hf_cook_subscribers_${cookCleanKey}`) || "[]");
+          localStorage.setItem(`hf_cook_subscribers_${cookCleanKey}`, JSON.stringify([newCookSub, ...scopedCookSubs]));
+        }
+
         // Customer Orders
         const existingCustOrders = JSON.parse(localStorage.getItem("hf_customer_orders") || "[]");
         const newCustOrder = {
@@ -243,6 +257,11 @@ function CheckoutContent() {
           slot: formData.mealSlot,
         };
         localStorage.setItem("hf_customer_orders", JSON.stringify([newCustOrder, ...existingCustOrders]));
+
+        if (userCleanKey) {
+          const scopedCustOrders = JSON.parse(localStorage.getItem(`hf_customer_orders_${userCleanKey}`) || "[]");
+          localStorage.setItem(`hf_customer_orders_${userCleanKey}`, JSON.stringify([newCustOrder, ...scopedCustOrders]));
+        }
 
         // Customer Subscriptions
         const existingCustSubs = JSON.parse(localStorage.getItem("hf_customer_subscriptions") || "[]");
@@ -262,6 +281,11 @@ function CheckoutContent() {
           totalMeals: durationDays,
         };
         localStorage.setItem("hf_customer_subscriptions", JSON.stringify([newCustSub, ...existingCustSubs]));
+
+        if (userCleanKey) {
+          const scopedCustSubs = JSON.parse(localStorage.getItem(`hf_customer_subscriptions_${userCleanKey}`) || "[]");
+          localStorage.setItem(`hf_customer_subscriptions_${userCleanKey}`, JSON.stringify([newCustSub, ...scopedCustSubs]));
+        }
       } catch (err) {
         console.warn("LocalStorage sync warning:", err);
       }
@@ -394,9 +418,12 @@ function CheckoutContent() {
                   <input
                     type="tel"
                     required
+                    maxLength={10}
+                    pattern="[6-9][0-9]{9}"
+                    placeholder="10-digit mobile number"
                     className="input"
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
                   />
                 </div>
               </div>
